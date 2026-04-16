@@ -86,6 +86,22 @@ async function main() {
         const durationMap = new Map<string, number>()
         for (const td of turnDurations) durationMap.set(td.parentUuid, td.durationMs)
 
+        // Subagent messages may carry a sessionId other than the file's own
+        // UUID (the Agent tool inlines child-session log entries). Pre-insert
+        // placeholder session rows for every id we've seen so the FK holds.
+        const distinctIds = new Set(newMessages.map((m) => m.sessionId))
+        distinctIds.add(sessionId)
+        if (distinctIds.size > 1) {
+          db.transaction((tx) => {
+            for (const sid of distinctIds) {
+              tx.insert(sessions).values({
+                id: sid, projectId: project.id, filePath,
+                lastParsedOffset: 0, fileSize: 0,
+              }).onConflictDoNothing().run()
+            }
+          })
+        }
+
         if (newMessages.length > 0) {
           const BATCH = 500
           for (let i = 0; i < newMessages.length; i += BATCH) {
@@ -112,30 +128,35 @@ async function main() {
           totalMessagesAdded += newMessages.length
         }
 
-        const totals = db.select({
-          messageCount: sql<number>`count(*)`,
-          totalInput: sql<number>`coalesce(sum(${messages.inputTokens}), 0)`,
-          totalOutput: sql<number>`coalesce(sum(${messages.outputTokens}), 0)`,
-          totalCacheCreation: sql<number>`coalesce(sum(${messages.cacheCreationTokens}), 0)`,
-          totalCacheRead: sql<number>`coalesce(sum(${messages.cacheReadTokens}), 0)`,
-          totalCost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
-          minTs: sql<string>`min(${messages.timestamp})`,
-          maxTs: sql<string>`max(${messages.timestamp})`,
-        }).from(messages).where(eq(messages.sessionId, sessionId)).get()
+        for (const sid of distinctIds) {
+          const totals = db.select({
+            messageCount: sql<number>`count(*)`,
+            totalInput: sql<number>`coalesce(sum(${messages.inputTokens}), 0)`,
+            totalOutput: sql<number>`coalesce(sum(${messages.outputTokens}), 0)`,
+            totalCacheCreation: sql<number>`coalesce(sum(${messages.cacheCreationTokens}), 0)`,
+            totalCacheRead: sql<number>`coalesce(sum(${messages.cacheReadTokens}), 0)`,
+            totalCost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
+            minTs: sql<string>`min(${messages.timestamp})`,
+            maxTs: sql<string>`max(${messages.timestamp})`,
+          }).from(messages).where(eq(messages.sessionId, sid)).get()
 
-        db.update(sessions).set({
-          title: sessionTitle ?? undefined, slug: sessionSlug ?? undefined,
-          entrypoint: sessionEntrypoint ?? undefined,
-          startedAt: totals?.minTs ?? firstTimestamp ?? undefined,
-          endedAt: totals?.maxTs ?? lastTimestamp ?? undefined,
-          messageCount: totals?.messageCount ?? 0,
-          totalInputTokens: totals?.totalInput ?? 0,
-          totalOutputTokens: totals?.totalOutput ?? 0,
-          totalCacheCreationTokens: totals?.totalCacheCreation ?? 0,
-          totalCacheReadTokens: totals?.totalCacheRead ?? 0,
-          totalCost: totals?.totalCost ?? 0,
-          lastParsedOffset: lastOffset, fileSize: currentSize,
-        }).where(eq(sessions.id, sessionId)).run()
+          const isParent = sid === sessionId
+          db.update(sessions).set({
+            title: isParent ? (sessionTitle ?? undefined) : undefined,
+            slug: isParent ? (sessionSlug ?? undefined) : undefined,
+            entrypoint: isParent ? (sessionEntrypoint ?? undefined) : undefined,
+            startedAt: totals?.minTs ?? (isParent ? firstTimestamp ?? undefined : undefined),
+            endedAt: totals?.maxTs ?? (isParent ? lastTimestamp ?? undefined : undefined),
+            messageCount: totals?.messageCount ?? 0,
+            totalInputTokens: totals?.totalInput ?? 0,
+            totalOutputTokens: totals?.totalOutput ?? 0,
+            totalCacheCreationTokens: totals?.totalCacheCreation ?? 0,
+            totalCacheReadTokens: totals?.totalCacheRead ?? 0,
+            totalCost: totals?.totalCost ?? 0,
+            lastParsedOffset: isParent ? lastOffset : undefined,
+            fileSize: isParent ? currentSize : undefined,
+          }).where(eq(sessions.id, sid)).run()
+        }
 
         if (firstTimestamp || lastTimestamp) {
           const proj = db.select().from(projects).where(eq(projects.id, project.id)).get()

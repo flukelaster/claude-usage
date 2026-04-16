@@ -133,6 +133,31 @@ export const syncLogs = createServerFn({ method: 'POST' }).handler(async (): Pro
           durationMap.set(td.parentUuid, td.durationMs)
         }
 
+        // Subagent invocations (Agent tool) emit messages whose `sessionId`
+        // refers to a child session that doesn't have its own .jsonl file at
+        // this level — the messages are inlined into the parent log. Upsert a
+        // placeholder sessions row for every distinct id we've seen so the
+        // message FK succeeds; metadata backfills on future syncs that find
+        // the real child file.
+        const distinctSessionIds = new Set(newMessages.map((m) => m.sessionId))
+        distinctSessionIds.add(sessionId) // always keep the parent row fresh
+        if (distinctSessionIds.size > 1) {
+          db.transaction((tx) => {
+            for (const sid of distinctSessionIds) {
+              tx.insert(sessions)
+                .values({
+                  id: sid,
+                  projectId: project.id,
+                  filePath,
+                  lastParsedOffset: 0,
+                  fileSize: 0,
+                })
+                .onConflictDoNothing()
+                .run()
+            }
+          })
+        }
+
         // Batch insert messages in transaction. Count only rows that actually
         // land in the DB — `onConflictDoNothing` may skip existing uuids, and
         // if a transaction throws we must not double-count on retry.
@@ -186,39 +211,50 @@ export const syncLogs = createServerFn({ method: 'POST' }).handler(async (): Pro
           }
         }
 
-        // Update session metadata
-        const totals = db.select({
-          messageCount: sql<number>`count(*)`,
-          totalInput: sql<number>`coalesce(sum(${messages.inputTokens}), 0)`,
-          totalOutput: sql<number>`coalesce(sum(${messages.outputTokens}), 0)`,
-          totalCacheCreation: sql<number>`coalesce(sum(${messages.cacheCreationTokens}), 0)`,
-          totalCacheRead: sql<number>`coalesce(sum(${messages.cacheReadTokens}), 0)`,
-          totalCost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
-          minTimestamp: sql<string>`min(${messages.timestamp})`,
-          maxTimestamp: sql<string>`max(${messages.timestamp})`,
-        })
-          .from(messages)
-          .where(eq(messages.sessionId, sessionId))
-          .get()
-
-        db.update(sessions)
-          .set({
-            title: sessionTitle ?? undefined,
-            slug: sessionSlug ?? undefined,
-            entrypoint: sessionEntrypoint ?? undefined,
-            startedAt: totals?.minTimestamp ?? firstTimestamp ?? undefined,
-            endedAt: totals?.maxTimestamp ?? lastTimestamp ?? undefined,
-            messageCount: totals?.messageCount ?? 0,
-            totalInputTokens: totals?.totalInput ?? 0,
-            totalOutputTokens: totals?.totalOutput ?? 0,
-            totalCacheCreationTokens: totals?.totalCacheCreation ?? 0,
-            totalCacheReadTokens: totals?.totalCacheRead ?? 0,
-            totalCost: totals?.totalCost ?? 0,
-            lastParsedOffset: lastOffset,
-            fileSize: currentSize,
+        // Recompute aggregates for every session id we touched (the parent
+        // plus any subagent ids discovered inside the log). The parent row
+        // also records the byte offset so the next sync can skip already-
+        // parsed content.
+        for (const sid of distinctSessionIds) {
+          const totals = db.select({
+            messageCount: sql<number>`count(*)`,
+            totalInput: sql<number>`coalesce(sum(${messages.inputTokens}), 0)`,
+            totalOutput: sql<number>`coalesce(sum(${messages.outputTokens}), 0)`,
+            totalCacheCreation: sql<number>`coalesce(sum(${messages.cacheCreationTokens}), 0)`,
+            totalCacheRead: sql<number>`coalesce(sum(${messages.cacheReadTokens}), 0)`,
+            totalCost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
+            minTimestamp: sql<string>`min(${messages.timestamp})`,
+            maxTimestamp: sql<string>`max(${messages.timestamp})`,
           })
-          .where(eq(sessions.id, sessionId))
-          .run()
+            .from(messages)
+            .where(eq(messages.sessionId, sid))
+            .get()
+
+          const isParent = sid === sessionId
+          db.update(sessions)
+            .set({
+              // Only stamp the parent session with the file-derived metadata;
+              // orphans (subagents) don't have their own top-level .jsonl so
+              // leave their title/slug/entrypoint alone.
+              title: isParent ? (sessionTitle ?? undefined) : undefined,
+              slug: isParent ? (sessionSlug ?? undefined) : undefined,
+              entrypoint: isParent ? (sessionEntrypoint ?? undefined) : undefined,
+              startedAt: totals?.minTimestamp ?? (isParent ? firstTimestamp ?? undefined : undefined),
+              endedAt: totals?.maxTimestamp ?? (isParent ? lastTimestamp ?? undefined : undefined),
+              messageCount: totals?.messageCount ?? 0,
+              totalInputTokens: totals?.totalInput ?? 0,
+              totalOutputTokens: totals?.totalOutput ?? 0,
+              totalCacheCreationTokens: totals?.totalCacheCreation ?? 0,
+              totalCacheReadTokens: totals?.totalCacheRead ?? 0,
+              totalCost: totals?.totalCost ?? 0,
+              // Only the parent's byte offset matters — the orphan's own
+              // file (if it ever gets its own .jsonl) will overwrite later.
+              lastParsedOffset: isParent ? lastOffset : undefined,
+              fileSize: isParent ? currentSize : undefined,
+            })
+            .where(eq(sessions.id, sid))
+            .run()
+        }
 
         // Update project timestamps
         if (firstTimestamp || lastTimestamp) {
