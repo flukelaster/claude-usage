@@ -7,6 +7,15 @@ import {
 } from '~/lib/schemas'
 import { calcCost, type TokenUsage } from '~/lib/pricing'
 
+export interface ParsedToolUse {
+  id: string
+  messageId: string
+  sessionId: string
+  timestamp: string
+  toolName: string
+  inputSize: number
+}
+
 export interface ParsedMessage {
   uuid: string
   sessionId: string
@@ -21,6 +30,7 @@ export interface ParsedMessage {
   estimatedCostUsd: number
   stopReason: string | null
   isSidechain: boolean
+  toolUses: ParsedToolUse[]
 }
 
 export interface ParsedTurnDuration {
@@ -91,6 +101,13 @@ export function parseEntry(raw: unknown): ParseResult {
       cacheEphemeral1hTokens: ephemeral1h,
     }
 
+    const toolUses = extractToolUses(
+      (entry.message as { content?: unknown })?.content,
+      data.uuid,
+      data.sessionId,
+      data.timestamp,
+    )
+
     return {
       type: 'message',
       data: {
@@ -102,6 +119,7 @@ export function parseEntry(raw: unknown): ParseResult {
         estimatedCostUsd: calcCost(model, tokenUsage),
         stopReason: data.message.stop_reason ?? null,
         isSidechain: data.isSidechain,
+        toolUses,
       },
     }
   }
@@ -166,4 +184,36 @@ export function parseEntry(raw: unknown): ParseResult {
   }
 
   return { type: 'skip' }
+}
+
+/**
+ * Pick `tool_use` blocks out of the assistant message content. Anthropic
+ * sends content as an array of blocks with `type: "tool_use" | "text"`.
+ * Input size is the length of the serialized input JSON — a cheap proxy
+ * for how much context the tool consumed.
+ */
+function extractToolUses(
+  content: unknown,
+  messageId: string,
+  sessionId: string,
+  timestamp: string,
+): ParsedToolUse[] {
+  if (!Array.isArray(content)) return []
+  const out: ParsedToolUse[] = []
+  for (const block of content) {
+    if (!block || typeof block !== 'object') continue
+    const b = block as Record<string, unknown>
+    if (b.type !== 'tool_use') continue
+    const id = typeof b.id === 'string' ? b.id : null
+    const name = typeof b.name === 'string' ? b.name : null
+    if (!id || !name) continue
+    let inputSize = 0
+    try {
+      inputSize = b.input === undefined ? 0 : JSON.stringify(b.input).length
+    } catch {
+      inputSize = 0
+    }
+    out.push({ id, messageId, sessionId, timestamp, toolName: name, inputSize })
+  }
+  return out
 }

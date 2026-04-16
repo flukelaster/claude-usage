@@ -1,34 +1,35 @@
+import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { syncLogs, getLastSyncTime } from '~/server/functions/sync-logs'
-import { PRICING, PRICING_LAST_VERIFIED, getModelDisplayName } from '~/lib/pricing'
+import { PRICING, PRICING_LAST_VERIFIED } from '~/lib/pricing'
 import { formatRelativeTime } from '~/lib/format'
-import { RefreshCw, AlertTriangle, FolderOpen, Database } from 'lucide-react'
-import { homedir } from '~/server/functions/get-settings'
+import { RefreshCw, AlertTriangle, FolderOpen, Database, DollarSign, Calendar } from 'lucide-react'
+import {
+  useAppSettings,
+  useSetMonthlyBudget,
+  useSetBillingCycleStartDay,
+} from '~/hooks/useAppSettings'
+import { useLastSync, useSyncLogs } from '~/hooks/useSync'
+import { useHomedir } from '~/hooks/useSettings'
+import { SidechainToggle } from '~/components/sidechain-toggle'
+import { UnknownModelBanner } from '~/components/unknown-model-banner'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
 })
 
 function SettingsPage() {
-  const queryClient = useQueryClient()
+  const { data: lastSync } = useLastSync()
+  const { data: homeDir } = useHomedir()
+  const { data: settings } = useAppSettings()
+  const syncMutation = useSyncLogs()
+  const setBudget = useSetMonthlyBudget()
+  const setCycleDay = useSetBillingCycleStartDay()
 
-  const { data: lastSync } = useQuery({
-    queryKey: ['lastSync'],
-    queryFn: () => getLastSyncTime(),
-  })
+  const [budgetDraft, setBudgetDraft] = useState<string>('')
+  const [cycleDraft, setCycleDraft] = useState<string>('')
 
-  const { data: homeDir } = useQuery({
-    queryKey: ['homeDir'],
-    queryFn: () => homedir(),
-  })
-
-  const syncMutation = useMutation({
-    mutationFn: () => syncLogs(),
-    onSuccess: () => {
-      queryClient.invalidateQueries()
-    },
-  })
+  const currentBudget = settings?.monthlyBudgetUsd ?? null
+  const currentCycle = settings?.billingCycleStartDay ?? 1
 
   // Check if pricing is stale (>90 days)
   const lastVerified = new Date(PRICING_LAST_VERIFIED)
@@ -42,6 +43,117 @@ function SettingsPage() {
         <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
           Dashboard configuration
         </p>
+      </div>
+
+      <UnknownModelBanner />
+
+      {/* Analytics preferences */}
+      <div className="rounded-lg p-6" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+        <h3 className="text-lg mb-4">Analytics Preferences</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Include sidechain messages</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+                Count subagent turns in cost and token analytics.
+              </p>
+            </div>
+            <SidechainToggle />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div>
+              <div className="flex items-center gap-2">
+                <DollarSign size={14} style={{ color: 'var(--color-muted-foreground)' }} />
+                <p className="text-sm font-medium">Monthly budget (USD)</p>
+              </div>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+                Leave blank to disable the budget banner. Currently{' '}
+                {currentBudget !== null ? `$${currentBudget.toFixed(2)}` : 'not set'}.
+              </p>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const n = Number(budgetDraft)
+                setBudget.mutate(Number.isFinite(n) && n > 0 ? n : null)
+                setBudgetDraft('')
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={budgetDraft}
+                placeholder={currentBudget !== null ? String(currentBudget) : '100'}
+                onChange={(e) => setBudgetDraft(e.target.value)}
+                className="w-28 rounded-md px-2 py-1.5 text-sm"
+                style={{
+                  backgroundColor: 'var(--color-background)',
+                  border: '1px solid var(--color-border)',
+                }}
+              />
+              <button
+                type="submit"
+                disabled={setBudget.isPending}
+                className="rounded-md px-3 py-1.5 text-sm"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  color: 'var(--color-primary-foreground)',
+                }}
+              >
+                Save
+              </button>
+            </form>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div>
+              <div className="flex items-center gap-2">
+                <Calendar size={14} style={{ color: 'var(--color-muted-foreground)' }} />
+                <p className="text-sm font-medium">Billing cycle start day</p>
+              </div>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+                Day of month the billing period resets (1–28). Currently day {currentCycle}.
+              </p>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const n = Number(cycleDraft)
+                if (Number.isFinite(n)) setCycleDay.mutate(n)
+                setCycleDraft('')
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="number"
+                min={1}
+                max={28}
+                value={cycleDraft}
+                placeholder={String(currentCycle)}
+                onChange={(e) => setCycleDraft(e.target.value)}
+                className="w-20 rounded-md px-2 py-1.5 text-sm"
+                style={{
+                  backgroundColor: 'var(--color-background)',
+                  border: '1px solid var(--color-border)',
+                }}
+              />
+              <button
+                type="submit"
+                disabled={setCycleDay.isPending}
+                className="rounded-md px-3 py-1.5 text-sm"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  color: 'var(--color-primary-foreground)',
+                }}
+              >
+                Save
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
 
       {/* Log Path */}

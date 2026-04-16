@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { statSync } from 'node:fs'
 import { getDb } from '~/server/db/client'
-import { projects, sessions, messages, syncState } from '~/server/db/schema'
+import { projects, sessions, messages, syncState, toolUses } from '~/server/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { scanProjectFolders, getSessionFiles, extractSessionId } from '~/server/claude-logs/paths'
 import { readSessionFile } from '~/server/claude-logs/reader'
@@ -163,6 +163,23 @@ export const syncLogs = createServerFn({ method: 'POST' }).handler(async (): Pro
                   .onConflictDoNothing()
                   .run()
                 if ((result as { changes?: number }).changes) batchInserted += 1
+
+                // Tool uses live in a sibling table — always attempt the
+                // insert so backfill on a previously-synced message still
+                // captures its tool calls.
+                for (const tu of msg.toolUses) {
+                  tx.insert(toolUses)
+                    .values({
+                      id: tu.id,
+                      messageId: tu.messageId,
+                      sessionId: tu.sessionId,
+                      timestamp: tu.timestamp,
+                      toolName: tu.toolName,
+                      inputSize: tu.inputSize,
+                    })
+                    .onConflictDoNothing()
+                    .run()
+                }
               }
             })
             messagesAdded += batchInserted

@@ -56,3 +56,23 @@ export const syncState = sqliteTable('sync_state', {
   value: text('value'),
   updatedAt: text('updated_at'),
 })
+
+/**
+ * One row per tool_use block encountered inside an assistant message.
+ * Populated on parse; older messages that were synced before this table
+ * existed will be backfilled by future syncs (parser is idempotent via
+ * onConflictDoNothing on the primary key).
+ */
+export const toolUses = sqliteTable('tool_uses', {
+  id: text('id').primaryKey(),                       // tool_use id, e.g. "toolu_..."
+  messageId: text('message_id').notNull().references(() => messages.uuid),
+  sessionId: text('session_id').notNull(),
+  timestamp: text('timestamp').notNull(),
+  toolName: text('tool_name').notNull(),
+  inputSize: integer('input_size').default(0),       // length of serialized input JSON
+}, (table) => [
+  index('idx_tool_uses_message').on(table.messageId),
+  index('idx_tool_uses_session').on(table.sessionId),
+  index('idx_tool_uses_name').on(table.toolName),
+  index('idx_tool_uses_timestamp').on(table.timestamp),
+])

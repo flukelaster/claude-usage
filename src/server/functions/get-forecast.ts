@@ -3,19 +3,30 @@ import { getDb } from '~/server/db/client'
 import { messages } from '~/server/db/schema'
 import { sql, eq, and, gte, lt } from 'drizzle-orm'
 import { buildSidechainFilter } from '~/server/db/query-filters'
+import { readNumberSetting } from '~/server/db/app-settings'
+import { resolveBillingPeriod } from './get-budget-status'
 
 export const getForecast = createServerFn({ method: 'GET' }).handler(async () => {
   const db = getDb()
   const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
+  const cycleStartDay = Math.min(
+    Math.max(1, readNumberSetting('billingCycleStartDay', 1)),
+    28,
+  )
+  const period = resolveBillingPeriod(now, cycleStartDay)
+  const periodStart = new Date(period.startIso)
+  const periodEnd = new Date(period.endIso)
 
-  const firstOfMonth = new Date(year, month, 1).toISOString()
-  const firstOfNextMonth = new Date(year, month + 1, 1).toISOString()
-  const firstOfPrevMonth = new Date(year, month - 1, 1).toISOString()
+  const firstOfMonth = period.startIso
+  const firstOfNextMonth = period.endIso
+  const prevPeriod = resolveBillingPeriod(
+    new Date(periodStart.getTime() - 24 * 60 * 60 * 1000),
+    cycleStartDay,
+  )
+  const firstOfPrevMonth = prevPeriod.startIso
 
-  const totalDaysInMonth = new Date(year, month + 1, 0).getDate()
-  const todayDate = now.getDate()
+  const totalDaysInMonth = Math.max(1, period.totalDays)
+  const todayDate = Math.min(totalDaysInMonth, period.daysElapsed)
 
   const sidechainFilter = buildSidechainFilter()
 
@@ -70,15 +81,19 @@ export const getForecast = createServerFn({ method: 'GET' }).handler(async () =>
   // Fill remaining days with projections. Format in local timezone to match
   // the localtime-grouped SQL dates above.
   for (let i = 1; i <= daysRemaining; i++) {
-    const futureDate = new Date(year, month, todayDate + i)
+    const futureDate = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate() + todayDate + i - 1)
     const dateStr = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`
     chartData.push({ date: dateStr, cost: dailyAverage, isProjected: true })
   }
 
-  const monthLabel = now.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+  const monthLabel =
+    cycleStartDay === 1
+      ? periodStart.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+      : `${periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(periodEnd.getTime() - 86_400_000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
 
   return {
     monthLabel,
+    cycleStartDay,
     monthSpendSoFar,
     projectedTotal,
     dailyAverage,
