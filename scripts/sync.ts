@@ -6,7 +6,7 @@ import { scanProjectFolders, getSessionFiles, extractSessionId } from '../src/se
 import { readSessionFile } from '../src/server/claude-logs/reader'
 import { parseEntry, type ParsedMessage, type ParsedTurnDuration } from '../src/server/claude-logs/parser'
 import { getDb } from '../src/server/db/client'
-import { projects, sessions, messages, syncState } from '../src/server/db/schema'
+import { projects, sessions, messages, toolUses, syncState } from '../src/server/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { statSync } from 'node:fs'
 
@@ -100,6 +100,12 @@ async function main() {
                   estimatedCostUsd: msg.estimatedCostUsd, stopReason: msg.stopReason,
                   durationMs: durationMap.get(msg.uuid) ?? null, isSidechain: msg.isSidechain,
                 }).onConflictDoNothing().run()
+                for (const tu of msg.toolUses) {
+                  tx.insert(toolUses).values({
+                    id: tu.id, messageId: tu.messageId, sessionId: tu.sessionId,
+                    timestamp: tu.timestamp, toolName: tu.toolName, inputSize: tu.inputSize,
+                  }).onConflictDoNothing().run()
+                }
               }
             })
           }
