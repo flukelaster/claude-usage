@@ -36,15 +36,15 @@ function queryModelStats(days: number | null) {
     .all()
 
   const dailyByModel = db.select({
-    date: sql<string>`date(${messages.timestamp})`.as('date'),
+    date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
     model: messages.model,
     cost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
     tokens: sql<number>`coalesce(sum(${messages.inputTokens} + ${messages.outputTokens} + ${messages.cacheCreationTokens} + ${messages.cacheReadTokens}), 0)`,
   })
     .from(messages)
     .where(and(timeFilter, sidechainFilter))
-    .groupBy(sql`date(${messages.timestamp})`, messages.model)
-    .orderBy(sql`date(${messages.timestamp})`)
+    .groupBy(sql`date(${messages.timestamp}, 'localtime')`, messages.model)
+    .orderBy(sql`date(${messages.timestamp}, 'localtime')`)
     .all()
 
   return { modelStats, dailyByModel, days }

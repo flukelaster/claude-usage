@@ -133,14 +133,17 @@ export const syncLogs = createServerFn({ method: 'POST' }).handler(async (): Pro
           durationMap.set(td.parentUuid, td.durationMs)
         }
 
-        // Batch insert messages in transaction
+        // Batch insert messages in transaction. Count only rows that actually
+        // land in the DB — `onConflictDoNothing` may skip existing uuids, and
+        // if a transaction throws we must not double-count on retry.
         if (newMessages.length > 0) {
           const BATCH_SIZE = 500
           for (let i = 0; i < newMessages.length; i += BATCH_SIZE) {
             const batch = newMessages.slice(i, i + BATCH_SIZE)
+            let batchInserted = 0
             db.transaction((tx) => {
               for (const msg of batch) {
-                tx.insert(messages)
+                const result = tx.insert(messages)
                   .values({
                     uuid: msg.uuid,
                     sessionId: msg.sessionId,
@@ -159,10 +162,11 @@ export const syncLogs = createServerFn({ method: 'POST' }).handler(async (): Pro
                   })
                   .onConflictDoNothing()
                   .run()
+                if ((result as { changes?: number }).changes) batchInserted += 1
               }
             })
+            messagesAdded += batchInserted
           }
-          messagesAdded += newMessages.length
         }
 
         // Update session metadata

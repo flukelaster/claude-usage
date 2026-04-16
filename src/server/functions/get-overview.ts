@@ -55,7 +55,7 @@ function queryOverview(days: number | null) {
   const cacheHitRate = totalInput > 0 ? (kpi?.totalCacheReadTokens ?? 0) / totalInput : 0
 
   const dailyCost = db.select({
-    date: sql<string>`date(${messages.timestamp})`.as('date'),
+    date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
     cost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
     inputTokens: sql<number>`coalesce(sum(${messages.inputTokens}), 0)`,
     outputTokens: sql<number>`coalesce(sum(${messages.outputTokens}), 0)`,
@@ -64,8 +64,8 @@ function queryOverview(days: number | null) {
   })
     .from(messages)
     .where(and(timeFilter, sidechainFilter))
-    .groupBy(sql`date(${messages.timestamp})`)
-    .orderBy(sql`date(${messages.timestamp})`)
+    .groupBy(sql`date(${messages.timestamp}, 'localtime')`)
+    .orderBy(sql`date(${messages.timestamp}, 'localtime')`)
     .all()
 
   const topProjects = db.select({

@@ -85,17 +85,25 @@ export function calcCost(model: string, usage: TokenUsage): number {
   const p = getModelPricing(model)
 
   const totalCacheWrite = usage.cacheCreationTokens
+  const ephemeralTotal = usage.cacheEphemeral5mTokens + usage.cacheEphemeral1hTokens
   let cacheWriteCost: number
 
-  if (totalCacheWrite > 0 && (usage.cacheEphemeral5mTokens > 0 || usage.cacheEphemeral1hTokens > 0)) {
-    // Use the breakdown for accurate pricing
-    cacheWriteCost = (
-      usage.cacheEphemeral5mTokens * p.cacheWrite5m +
-      usage.cacheEphemeral1hTokens * p.cacheWrite1h
-    ) / 1_000_000
+  if (totalCacheWrite === 0) {
+    cacheWriteCost = 0
+  } else if (ephemeralTotal > 0) {
+    // Use the explicit breakdown for accurate pricing. If the breakdown covers
+    // only part of the total (e.g. one field missing), split the remainder
+    // using the observed ratio.
+    const remainder = Math.max(0, totalCacheWrite - ephemeralTotal)
+    const p5mShare = usage.cacheEphemeral5mTokens / ephemeralTotal
+    const attributed5m = usage.cacheEphemeral5mTokens + remainder * p5mShare
+    const attributed1h = usage.cacheEphemeral1hTokens + remainder * (1 - p5mShare)
+    cacheWriteCost = (attributed5m * p.cacheWrite5m + attributed1h * p.cacheWrite1h) / 1_000_000
   } else {
-    // Fallback: assume 1h cache write (conservative estimate)
-    cacheWriteCost = totalCacheWrite * p.cacheWrite1h / 1_000_000
+    // Breakdown missing entirely. 5-minute cache is the SDK default, so
+    // weight toward it rather than assuming the pricier 1h tier.
+    const blendRate = p.cacheWrite5m * 0.75 + p.cacheWrite1h * 0.25
+    cacheWriteCost = totalCacheWrite * blendRate / 1_000_000
   }
 
   return (

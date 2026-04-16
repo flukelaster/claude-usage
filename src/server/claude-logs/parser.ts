@@ -69,8 +69,16 @@ export function parseEntry(raw: unknown): ParseResult {
     // Filter out synthetic/empty entries
     if (model === '<synthetic>') return { type: 'skip' }
     const usage = data.message.usage
-    if (usage.input_tokens === 0 && usage.output_tokens === 0 &&
-        usage.cache_creation_input_tokens === 0 && usage.cache_read_input_tokens === 0) {
+    const ephemeral5m = usage.cache_creation?.ephemeral_5m_input_tokens ?? 0
+    const ephemeral1h = usage.cache_creation?.ephemeral_1h_input_tokens ?? 0
+    if (
+      usage.input_tokens === 0 &&
+      usage.output_tokens === 0 &&
+      usage.cache_creation_input_tokens === 0 &&
+      usage.cache_read_input_tokens === 0 &&
+      ephemeral5m === 0 &&
+      ephemeral1h === 0
+    ) {
       return { type: 'skip' }
     }
 
@@ -79,8 +87,8 @@ export function parseEntry(raw: unknown): ParseResult {
       outputTokens: usage.output_tokens,
       cacheCreationTokens: usage.cache_creation_input_tokens,
       cacheReadTokens: usage.cache_read_input_tokens,
-      cacheEphemeral5mTokens: usage.cache_creation?.ephemeral_5m_input_tokens ?? 0,
-      cacheEphemeral1hTokens: usage.cache_creation?.ephemeral_1h_input_tokens ?? 0,
+      cacheEphemeral5mTokens: ephemeral5m,
+      cacheEphemeral1hTokens: ephemeral1h,
     }
 
     return {

@@ -66,15 +66,15 @@ function queryCacheStats(days: number | null) {
   const overallCost = modelCacheStats.reduce((acc, s) => acc + s.totalCost, 0)
 
   const dailyCacheTrend = db.select({
-    date: sql<string>`date(${messages.timestamp})`.as('date'),
+    date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
     cacheReadTokens: sql<number>`coalesce(sum(${messages.cacheReadTokens}), 0)`,
     cacheCreationTokens: sql<number>`coalesce(sum(${messages.cacheCreationTokens}), 0)`,
     inputTokens: sql<number>`coalesce(sum(${messages.inputTokens}), 0)`,
   })
     .from(messages)
     .where(and(timeFilter, eq(messages.isSidechain, false)))
-    .groupBy(sql`date(${messages.timestamp})`)
-    .orderBy(sql`date(${messages.timestamp})`)
+    .groupBy(sql`date(${messages.timestamp}, 'localtime')`)
+    .orderBy(sql`date(${messages.timestamp}, 'localtime')`)
     .all()
 
   const projectCache = db.select({

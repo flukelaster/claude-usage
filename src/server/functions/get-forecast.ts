@@ -18,15 +18,16 @@ export const getForecast = createServerFn({ method: 'GET' }).handler(async () =>
 
   const sidechainFilter = eq(messages.isSidechain, false)
 
-  // Current month daily costs
+  // Current month daily costs — group by local calendar date so it aligns
+  // with the user's notion of "today" and the month boundary computed above.
   const dailyCosts = db.select({
-    date: sql<string>`date(${messages.timestamp})`.as('date'),
+    date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
     cost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
   })
     .from(messages)
     .where(and(gte(messages.timestamp, firstOfMonth), lt(messages.timestamp, firstOfNextMonth), sidechainFilter))
-    .groupBy(sql`date(${messages.timestamp})`)
-    .orderBy(sql`date(${messages.timestamp})`)
+    .groupBy(sql`date(${messages.timestamp}, 'localtime')`)
+    .orderBy(sql`date(${messages.timestamp}, 'localtime')`)
     .all()
 
   // Previous month total
@@ -39,8 +40,10 @@ export const getForecast = createServerFn({ method: 'GET' }).handler(async () =>
 
   const previousMonthTotal = prevMonth?.total ?? 0
   const monthSpendSoFar = dailyCosts.reduce((sum, d) => sum + d.cost, 0)
-  const daysElapsed = dailyCosts.length || 1
-  const daysRemaining = totalDaysInMonth - todayDate
+  // daysElapsed reflects the calendar position, not the number of days with
+  // activity — a user who used Claude 3 days out of 10 still has 10 days elapsed.
+  const daysElapsed = Math.max(1, todayDate)
+  const daysRemaining = Math.max(0, totalDaysInMonth - todayDate)
   const dailyAverage = monthSpendSoFar / daysElapsed
   const projectedTotal = monthSpendSoFar + dailyAverage * daysRemaining
 
@@ -63,10 +66,11 @@ export const getForecast = createServerFn({ method: 'GET' }).handler(async () =>
     chartData.push({ date: d.date, cost: d.cost, isProjected: false })
   }
 
-  // Fill remaining days with projections
+  // Fill remaining days with projections. Format in local timezone to match
+  // the localtime-grouped SQL dates above.
   for (let i = 1; i <= daysRemaining; i++) {
     const futureDate = new Date(year, month, todayDate + i)
-    const dateStr = futureDate.toISOString().slice(0, 10)
+    const dateStr = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`
     chartData.push({ date: dateStr, cost: dailyAverage, isProjected: true })
   }
 
