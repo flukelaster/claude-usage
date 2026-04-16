@@ -76,6 +76,21 @@ function createDb() {
       input_size INTEGER DEFAULT 0
     );
 
+    CREATE TABLE IF NOT EXISTS tags (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS entity_tags (
+      tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (tag_id, entity_type, entity_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
     CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
@@ -85,6 +100,8 @@ function createDb() {
     CREATE INDEX IF NOT EXISTS idx_tool_uses_session ON tool_uses(session_id);
     CREATE INDEX IF NOT EXISTS idx_tool_uses_name ON tool_uses(tool_name);
     CREATE INDEX IF NOT EXISTS idx_tool_uses_timestamp ON tool_uses(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_entity_tags_tag ON entity_tags(tag_id);
+    CREATE INDEX IF NOT EXISTS idx_entity_tags_entity ON entity_tags(entity_type, entity_id);
   `)
 
   return db

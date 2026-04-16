@@ -11,6 +11,7 @@ import { getModelDisplayName } from '~/lib/pricing'
 import { Card } from '~/components/ui/card'
 import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
 import { EmptyState } from '~/components/ui/empty-state'
+import { TagEditor } from '~/components/tag-editor'
 
 const tooltipStyle = {
   backgroundColor: 'var(--color-card)',
@@ -87,6 +88,9 @@ function SessionDetailPage() {
           <span>{session.messageCount} messages</span>
           <span>&middot;</span>
           <span>{formatCost(session.totalCost ?? 0)}</span>
+        </div>
+        <div className="mt-3">
+          <TagEditor entityType="session" entityId={session.id} />
         </div>
       </div>
 

@@ -12,6 +12,7 @@ import { Card } from '~/components/ui/card'
 import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
 import { EmptyState } from '~/components/ui/empty-state'
 import { DataTable } from '~/components/tables/data-table'
+import { TagEditor } from '~/components/tag-editor'
 
 const chartColors = ['#c96442', '#d97757', '#87867f', '#5e5d59', '#b0aea5']
 
@@ -67,6 +68,9 @@ function ProjectDetailPage() {
         </Link>
         <h2 className="text-3xl">{project.displayName}</h2>
         <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>{project.cwd}</p>
+        <div className="mt-3">
+          <TagEditor entityType="project" entityId={project.id} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-6">

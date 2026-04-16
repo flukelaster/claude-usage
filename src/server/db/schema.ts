@@ -76,3 +76,30 @@ export const toolUses = sqliteTable('tool_uses', {
   index('idx_tool_uses_name').on(table.toolName),
   index('idx_tool_uses_timestamp').on(table.timestamp),
 ])
+
+/**
+ * User-defined labels that can be attached to projects or sessions.
+ * `color` is a hex string (e.g. "#c96442") used by the UI; null means
+ * "pick from the default palette".
+ */
+export const tags = sqliteTable('tags', {
+  id: text('id').primaryKey(),              // slug, e.g. "client-acme"
+  name: text('name').notNull(),
+  color: text('color'),
+  createdAt: text('created_at').notNull(),
+})
+
+/**
+ * Join table mapping tags to either a project or a session. We use a
+ * single table with an `entity_type` discriminator instead of two tables
+ * so queries like "every tagged entity" stay simple.
+ */
+export const entityTags = sqliteTable('entity_tags', {
+  tagId: text('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
+  entityType: text('entity_type').notNull(),    // 'project' | 'session'
+  entityId: text('entity_id').notNull(),
+  createdAt: text('created_at').notNull(),
+}, (table) => [
+  index('idx_entity_tags_tag').on(table.tagId),
+  index('idx_entity_tags_entity').on(table.entityType, table.entityId),
+])

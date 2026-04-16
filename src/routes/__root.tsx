@@ -23,6 +23,7 @@ import {
   FlaskConical,
   Hammer,
   AlertOctagon,
+  Tag as TagIcon,
 } from 'lucide-react'
 import { useTheme } from '~/lib/theme'
 import { ThemeToggle } from '~/components/theme-toggle'
@@ -42,6 +43,7 @@ const navItems = [
   { to: '/anomalies', label: 'Anomalies', icon: AlertOctagon },
   { to: '/what-if', label: 'What-If', icon: FlaskConical },
   { to: '/cache-analysis', label: 'Cache Analysis', icon: Database },
+  { to: '/tags', label: 'Tags', icon: TagIcon },
   { to: '/settings', label: 'Settings', icon: Settings },
 ] as const
 
