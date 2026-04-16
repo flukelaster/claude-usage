@@ -6,7 +6,7 @@ import {
 import { ArrowLeft } from 'lucide-react'
 
 import { useProjectDetail } from '~/hooks/useProjects'
-import { formatTokens, formatCost, formatRelativeTime } from '~/lib/format'
+import { formatTokens, formatCost, formatRelativeTime, rechartsFmt} from '~/lib/format'
 import { getModelDisplayName } from '~/lib/pricing'
 import { Card } from '~/components/ui/card'
 import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
@@ -87,7 +87,7 @@ function ProjectDetailPage() {
                 tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
                 tickFormatter={(v: number) => `$${v.toFixed(0)}`}
               />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatCost(value), 'Cost']} />
+              <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => [formatCost(value), 'Cost'])} />
               <Area type="monotone" dataKey="cost" stroke="#c96442" fill="#c96442" fillOpacity={0.15} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
@@ -105,7 +105,7 @@ function ProjectDetailPage() {
                       <Cell key={i} fill={chartColors[i % chartColors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => formatCost(value)} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => formatCost(value))} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-2">

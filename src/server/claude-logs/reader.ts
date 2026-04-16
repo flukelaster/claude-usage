@@ -13,10 +13,10 @@ export async function* readSessionFile(
   const stream = createReadStream(filePath, { start: fromOffset })
 
   let offset = fromOffset
-  let buffer = Buffer.alloc(0)
+  let buffer: Buffer = Buffer.alloc(0)
 
   for await (const chunk of stream as AsyncIterable<Buffer>) {
-    buffer = buffer.length === 0 ? chunk : Buffer.concat([buffer, chunk])
+    buffer = (buffer.length === 0 ? chunk : Buffer.concat([buffer, chunk])) as Buffer
 
     let newlineIdx: number
     while ((newlineIdx = buffer.indexOf(0x0a)) !== -1) {

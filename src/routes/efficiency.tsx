@@ -7,7 +7,7 @@ import {
 import { Terminal, Code } from 'lucide-react'
 
 import { useEfficiency } from '~/hooks/useEfficiency'
-import { formatCost, formatTokens } from '~/lib/format'
+import { formatCost, formatTokens, rechartsFmt} from '~/lib/format'
 import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
 import { Card } from '~/components/ui/card'
 import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
@@ -96,10 +96,10 @@ function EfficiencyPage() {
               <ZAxis range={[30, 30]} />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(value: number, name: string) => [
+                formatter={rechartsFmt((value, name) => [
                   name === 'Cost' ? formatCost(value) : value,
                   name,
-                ]}
+                ])}
               />
               {cliScatter.length > 0 && <Scatter name="CLI" data={cliScatter} fill="#c96442" />}
               {vscodeScatter.length > 0 && (
@@ -128,7 +128,7 @@ function EfficiencyPage() {
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(value: number) => [formatCost(value), 'Avg Cost']}
+                formatter={rechartsFmt((value) => [formatCost(value), 'Avg Cost'])}
               />
               <Line
                 type="monotone"

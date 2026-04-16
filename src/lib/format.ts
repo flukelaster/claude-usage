@@ -32,6 +32,18 @@ export function formatPercent(ratio: number): string {
   return `${(ratio * 100).toFixed(1)}%`
 }
 
+/**
+ * Adapter for Recharts <Tooltip formatter>. Recharts' formatter signature
+ * is `(value: ValueType | undefined, …) => ReactNode | [ReactNode, ReactNode]`
+ * which forces an `undefined` check at every call site. Our formatters only
+ * ever receive numbers, so this helper coerces undefined/strings to 0 and
+ * returns a signature Recharts accepts without type gymnastics.
+ */
+export function rechartsFmt<T>(fn: (value: number, name?: string) => T) {
+  return ((value: unknown, name?: unknown) =>
+    fn(typeof value === 'number' ? value : Number(value ?? 0), typeof name === 'string' ? name : undefined)) as never
+}
+
 export function formatRelativeTime(date: Date): string {
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()

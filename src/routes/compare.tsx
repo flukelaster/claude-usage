@@ -6,7 +6,7 @@ import {
 import { GitCompare } from 'lucide-react'
 
 import { useComparison } from '~/hooks/useComparison'
-import { formatCost, formatTokens } from '~/lib/format'
+import { formatCost, formatTokens, rechartsFmt} from '~/lib/format'
 import { Card } from '~/components/ui/card'
 import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
 import { EmptyState } from '~/components/ui/empty-state'
@@ -137,7 +137,7 @@ function ComparePage() {
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(value: number) => formatCost(value)}
+                  formatter={rechartsFmt((value) => formatCost(value))}
                 />
                 <Legend />
                 <Line

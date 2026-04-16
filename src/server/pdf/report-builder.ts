@@ -28,12 +28,14 @@ const CLAUDE_LOGO_PATH = 'M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048
 
 /* ── Types ── */
 
+import type { OverviewData, ModelStatsData, CacheData } from '~/types/api'
+
 interface ReportData {
   accountName: string
   period: string
-  overview: ReturnType<typeof import('~/server/functions/get-overview').queryOverview>
-  modelStats: ReturnType<typeof import('~/server/functions/get-model-stats').queryModelStats>
-  cacheStats: ReturnType<typeof import('~/server/functions/get-cache-stats').queryCacheStats>
+  overview: OverviewData
+  modelStats: ModelStatsData
+  cacheStats: CacheData
   projects: Array<{
     displayName: string
     sessionCount: number

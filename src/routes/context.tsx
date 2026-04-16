@@ -7,7 +7,7 @@ import {
 import { Maximize2 } from 'lucide-react'
 
 import { useContextUtilization } from '~/hooks/useContextUtilization'
-import { formatTokens } from '~/lib/format'
+import { formatTokens, rechartsFmt} from '~/lib/format'
 import { getModelDisplayName } from '~/lib/pricing'
 import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
 import { Card } from '~/components/ui/card'
@@ -92,7 +92,7 @@ function ContextUtilizationPage() {
                 <YAxis tick={{ fontSize: 11, fill: '#87867f' }} />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(value: number) => [value.toLocaleString(), 'Messages']}
+                  formatter={rechartsFmt((value) => [value.toLocaleString(), 'Messages'])}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {data.buckets.map((b, i) => (
@@ -127,10 +127,10 @@ function ContextUtilizationPage() {
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(value: number, name: string) => [
+                  formatter={rechartsFmt((value, name) => [
                     `${(value * 100).toFixed(1)}%`,
                     name === 'avgUtilization' ? 'Avg' : 'Peak',
-                  ]}
+                  ])}
                 />
                 <ReferenceLine y={0.75} stroke="#c96442" strokeDasharray="4 4" />
                 <Line

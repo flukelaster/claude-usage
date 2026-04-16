@@ -7,7 +7,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { formatTokens } from '~/lib/format'
+import { formatTokens, rechartsFmt } from '~/lib/format'
 
 interface TokenMixPoint {
   date: string
@@ -47,7 +47,7 @@ export function TokenMixChart({
         />
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={(value: number) => formatTokens(value)}
+          formatter={rechartsFmt((value) => formatTokens(value))}
         />
         <Bar dataKey="inputTokens" stackId="a" fill="#c96442" name="Input" />
         <Bar dataKey="outputTokens" stackId="a" fill="#d97757" name="Output" />

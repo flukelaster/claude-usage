@@ -7,7 +7,7 @@ import {
 import { Zap, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
 
 import { useCacheStats } from '~/hooks/useCacheStats'
-import { formatTokens, formatCost, formatPercent } from '~/lib/format'
+import { formatTokens, formatCost, formatPercent, rechartsFmt} from '~/lib/format'
 import { getModelDisplayName } from '~/lib/pricing'
 import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
 import { Card } from '~/components/ui/card'
@@ -125,7 +125,7 @@ function CacheAnalysisPage() {
                 tick={{ fontSize: 11, fill: '#87867f' }}
                 tickFormatter={(v: number) => formatTokens(v)}
               />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => formatTokens(value)} />
+              <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => formatTokens(value))} />
               <Area
                 type="monotone"
                 dataKey="cacheReadTokens"

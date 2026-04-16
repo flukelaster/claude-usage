@@ -6,7 +6,7 @@ import {
 import { TrendingUp, TrendingDown, DollarSign, Target } from 'lucide-react'
 
 import { useForecast } from '~/hooks/useForecast'
-import { formatCost } from '~/lib/format'
+import { formatCost, rechartsFmt} from '~/lib/format'
 import { Card } from '~/components/ui/card'
 import { KpiCard } from '~/components/ui/kpi-card'
 import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
@@ -118,7 +118,7 @@ function ForecastPage() {
               tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
               tickFormatter={(v: number) => `$${v.toFixed(0)}`}
             />
-            <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatCost(value), 'Cost']} />
+            <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => [formatCost(value), 'Cost'])} />
             <Bar dataKey="cost" radius={[4, 4, 0, 0]}>
               {data.chartData.map((entry, i) => (
                 <Cell

@@ -7,7 +7,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { formatCost } from '~/lib/format'
+import { formatCost, rechartsFmt } from '~/lib/format'
 
 interface DailyCostPoint {
   date: string
@@ -49,7 +49,7 @@ export function DailyCostChart({
         />
         <Tooltip
           contentStyle={tooltipStyle}
-          formatter={(value: number) => [formatCost(value), 'Cost']}
+          formatter={rechartsFmt((value) => [formatCost(value), 'Cost'])}
         />
         <Area
           type="monotone"

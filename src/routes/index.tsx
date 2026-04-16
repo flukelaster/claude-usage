@@ -8,7 +8,7 @@ import { RefreshCw, Coins, FolderOpen, Zap, Terminal, Code } from 'lucide-react'
 
 import { useOverview } from '~/hooks/useOverview'
 import { useLastSync, useSyncLogs } from '~/hooks/useSync'
-import { formatTokens, formatCost, formatPercent, formatRelativeTime } from '~/lib/format'
+import { formatTokens, formatCost, formatPercent, formatRelativeTime, rechartsFmt } from '~/lib/format'
 import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
 import { ExportButton } from '~/components/export-button'
 import { DataExportButton } from '~/components/data-export-button'
@@ -164,7 +164,7 @@ function OverviewPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(d: string) => d.slice(5)} />
               <YAxis tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(v: number) => `$${v.toFixed(0)}`} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatCost(value), 'Cost']} />
+              <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => [formatCost(value), 'Cost'])} />
               <Area type="monotone" dataKey="cost" stroke="#c96442" fill="#c96442" fillOpacity={0.15} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
@@ -176,7 +176,7 @@ function OverviewPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(d: string) => d.slice(5)} />
               <YAxis tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(v: number) => formatTokens(v)} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => formatTokens(value)} />
+              <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => formatTokens(value))} />
               <Bar dataKey="inputTokens" stackId="a" fill="#c96442" name="Input" />
               <Bar dataKey="outputTokens" stackId="a" fill="#d97757" name="Output" />
               <Bar dataKey="cacheCreationTokens" stackId="a" fill="#87867f" name="Cache Write" />
@@ -196,7 +196,7 @@ function OverviewPage() {
               <BarChart data={topProjects} layout="vertical">
                 <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }} tickFormatter={(v: number) => formatCost(v)} />
                 <YAxis type="category" dataKey="displayName" width={140} tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatCost(value), 'Cost']} />
+                <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => [formatCost(value), 'Cost'])} />
                 <Bar dataKey="totalCost" radius={[0, 4, 4, 0]}>
                   {topProjects.map((_, i) => (
                     <Cell key={i} fill={chartColors[i % chartColors.length]} />

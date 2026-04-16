@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 
 import { useModelStats } from '~/hooks/useModelStats'
-import { formatTokens, formatCost } from '~/lib/format'
+import { formatTokens, formatCost, rechartsFmt} from '~/lib/format'
 import { getModelDisplayName } from '~/lib/pricing'
 import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
 import { Card } from '~/components/ui/card'
@@ -131,7 +131,7 @@ function ModelsPage() {
             />
             <Tooltip
               contentStyle={tooltipStyle}
-              formatter={(value: number, name: string) => [formatCost(value), getModelDisplayName(name)]}
+              formatter={rechartsFmt((value, name) => [formatCost(value), getModelDisplayName(name ?? '')])}
             />
             <Legend formatter={(value: string) => getModelDisplayName(value)} />
             {models.map((model) => (

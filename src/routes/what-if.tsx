@@ -7,7 +7,7 @@ import {
 import { FlaskConical } from 'lucide-react'
 
 import { useWhatIf } from '~/hooks/useWhatIf'
-import { formatCost } from '~/lib/format'
+import { formatCost, rechartsFmt} from '~/lib/format'
 import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
 import { Card } from '~/components/ui/card'
 import { KpiGrid } from '~/components/cards/kpi-grid'
@@ -183,7 +183,7 @@ function WhatIfPage() {
               width={100}
               tick={{ fontSize: 12, fill: 'var(--color-foreground)' }}
             />
-            <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => formatCost(value)} />
+            <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => formatCost(value))} />
             <Legend />
             <Bar dataKey="actual" name="Actual" fill="#c96442" radius={[0, 4, 4, 0]} barSize={16} />
             <Bar dataKey="simulated" name="Simulated" fill="#87867f" radius={[0, 4, 4, 0]} barSize={16} />

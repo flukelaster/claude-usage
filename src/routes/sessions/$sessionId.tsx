@@ -6,7 +6,7 @@ import {
 import { ArrowLeft } from 'lucide-react'
 
 import { useSessionDetail } from '~/hooks/useSessions'
-import { formatTokens, formatCost, formatDuration } from '~/lib/format'
+import { formatTokens, formatCost, formatDuration, rechartsFmt} from '~/lib/format'
 import { getModelDisplayName } from '~/lib/pricing'
 import { Card } from '~/components/ui/card'
 import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
@@ -110,7 +110,7 @@ function SessionDetailPage() {
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(value: number) => [formatCost(value), 'Cumulative Cost']}
+                formatter={rechartsFmt((value) => [formatCost(value), 'Cumulative Cost'])}
               />
               <Line type="monotone" dataKey="cost" stroke="#c96442" strokeWidth={2} dot={false} />
             </LineChart>

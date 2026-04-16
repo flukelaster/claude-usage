@@ -16,7 +16,7 @@ import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-f
 import { Card } from '~/components/ui/card'
 import { EmptyState } from '~/components/ui/empty-state'
 import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
-import { formatCost } from '~/lib/format'
+import { formatCost, rechartsFmt} from '~/lib/format'
 
 export const Route = createFileRoute('/tools')({
   component: ToolsPage,
@@ -74,7 +74,7 @@ function ToolsPage() {
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
-                  formatter={(v: number) => [v.toLocaleString(), 'Calls']}
+                  formatter={rechartsFmt((v) => [v.toLocaleString(), 'Calls'])}
                 />
                 <Bar dataKey="callCount" radius={[0, 4, 4, 0]}>
                   {data.perTool.slice(0, 12).map((_, i) => (
@@ -97,7 +97,7 @@ function ToolsPage() {
                   />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(v: number) => [formatCost(v), 'Attributed cost']}
+                    formatter={rechartsFmt((v) => [formatCost(v), 'Attributed cost'])}
                   />
                   <Bar dataKey="attributedCost" fill="#c96442" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -122,7 +122,7 @@ function ToolsPage() {
                   <YAxis tick={{ fontSize: 11, fill: '#87867f' }} />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(v: number) => [v.toLocaleString(), 'Calls']}
+                    formatter={rechartsFmt((v) => [v.toLocaleString(), 'Calls'])}
                   />
                   <Bar dataKey="callCount" fill="#87867f" radius={[4, 4, 0, 0]} />
                 </BarChart>

@@ -13,8 +13,8 @@ import type { getCacheStatsAll } from '~/server/functions/get-cache-stats'
 import type { getModelStatsAll } from '~/server/functions/get-model-stats'
 import type { getDailyUsageAll } from '~/server/functions/get-daily-usage'
 import type { getEfficiencyAll } from '~/server/functions/get-efficiency'
-import type { getWhatIf } from '~/server/functions/get-what-if'
-import type { getSettings } from '~/server/functions/get-settings'
+import type { getWhatIfAll } from '~/server/functions/get-what-if'
+import type { homedir } from '~/server/functions/get-settings'
 import type { syncLogs } from '~/server/functions/sync-logs'
 
 export type OverviewData = Awaited<ReturnType<typeof getOverviewAll>>
@@ -48,6 +48,6 @@ export type DailyUsageData = Awaited<ReturnType<typeof getDailyUsageAll>>
 export type DailyUsageRow = DailyUsageData['daily'][number]
 
 export type EfficiencyData = Awaited<ReturnType<typeof getEfficiencyAll>>
-export type WhatIfData = Awaited<ReturnType<typeof getWhatIf>>
-export type SettingsData = Awaited<ReturnType<typeof getSettings>>
+export type WhatIfData = Awaited<ReturnType<typeof getWhatIfAll>>
+export type SettingsData = Awaited<ReturnType<typeof homedir>>
 export type SyncResult = Awaited<ReturnType<typeof syncLogs>>
