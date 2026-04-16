@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useTheme } from '~/lib/theme'
 import { ThemeToggle } from '~/components/theme-toggle'
+import { useAutoSync } from '~/hooks/useAutoSync'
 import '~/styles/globals.css'
 
 const navItems = [
@@ -68,6 +69,7 @@ function RootComponent() {
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
+        <AutoSyncDriver />
         <div className="flex h-screen">
           <Sidebar theme={theme} onToggleTheme={toggle} />
           <main className="flex-1 overflow-y-auto p-8">
@@ -79,6 +81,13 @@ function RootComponent() {
       </QueryClientProvider>
     </RootDocument>
   )
+}
+
+function AutoSyncDriver() {
+  // Rendered inside QueryClientProvider so the hook can subscribe to the
+  // watcher query and fan out invalidations through the shared client.
+  useAutoSync()
+  return null
 }
 
 function Sidebar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onToggleTheme: () => void }) {

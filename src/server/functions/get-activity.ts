@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getDb } from '~/server/db/client'
 import { messages, sessions } from '~/server/db/schema'
 import { sql, eq, and, gte } from 'drizzle-orm'
+import { buildSidechainFilter } from '~/server/db/query-filters'
 
 export const getActivityAll = createServerFn({ method: 'GET' })
   .handler(async () => queryActivity(null))
@@ -19,7 +20,7 @@ function queryActivity(days: number | null) {
     : null
   const timeFilter = cutoff ? gte(messages.timestamp, cutoff) : sql`1=1`
   const sessionTimeFilter = cutoff ? gte(sessions.startedAt, cutoff) : sql`1=1`
-  const sidechainFilter = eq(messages.isSidechain, false)
+  const sidechainFilter = buildSidechainFilter()
 
   // Heatmap: day of week × hour
   const heatmapData = db.select({

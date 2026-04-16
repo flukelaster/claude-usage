@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getDb } from '~/server/db/client'
 import { messages } from '~/server/db/schema'
 import { sql, eq, and, gte, lt } from 'drizzle-orm'
+import { buildSidechainFilter } from '~/server/db/query-filters'
 
 export const getForecast = createServerFn({ method: 'GET' }).handler(async () => {
   const db = getDb()
@@ -16,7 +17,7 @@ export const getForecast = createServerFn({ method: 'GET' }).handler(async () =>
   const totalDaysInMonth = new Date(year, month + 1, 0).getDate()
   const todayDate = now.getDate()
 
-  const sidechainFilter = eq(messages.isSidechain, false)
+  const sidechainFilter = buildSidechainFilter()
 
   // Current month daily costs — group by local calendar date so it aligns
   // with the user's notion of "today" and the month boundary computed above.

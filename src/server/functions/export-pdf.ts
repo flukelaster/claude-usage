@@ -19,11 +19,12 @@ async function generatePdf(accountName: string, days: number | null) {
   const { sql, eq, and, gte, desc } = await import('drizzle-orm')
   const { buildReport } = await import('~/server/pdf/report-builder')
   const { getModelPricing, getModelFamily } = await import('~/lib/pricing')
+  const { buildSidechainFilter } = await import('~/server/db/query-filters')
 
   const db = getDb()
   const cutoff = days ? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString() : null
   const timeFilter = cutoff ? gte(messages.timestamp, cutoff) : sql`1=1`
-  const sidechainFilter = eq(messages.isSidechain, false)
+  const sidechainFilter = buildSidechainFilter()
   const sessionTimeFilter = cutoff ? gte(sessions.startedAt, cutoff) : sql`1=1`
 
   // Overview KPIs

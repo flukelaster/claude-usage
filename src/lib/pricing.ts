@@ -47,6 +47,15 @@ export function getModelFamily(model: string): string {
   return MODEL_FAMILY[model] ?? FALLBACK_FAMILY
 }
 
+/**
+ * True if the model appears in the hard-coded pricing table. Callers can
+ * surface a warning for unknown models so the operator knows to update
+ * `PRICING` before trusting the cost estimate.
+ */
+export function isKnownModel(model: string): boolean {
+  return Object.prototype.hasOwnProperty.call(MODEL_FAMILY, model)
+}
+
 export function getModelPricing(model: string): ModelPricing {
   const family = getModelFamily(model)
   return PRICING[family] ?? PRICING[FALLBACK_FAMILY]

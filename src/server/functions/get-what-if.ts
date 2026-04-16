@@ -3,6 +3,7 @@ import { getDb } from '~/server/db/client'
 import { messages } from '~/server/db/schema'
 import { sql, eq, and, gte } from 'drizzle-orm'
 import { PRICING, calcCost, getModelFamily, getModelDisplayName, type TokenUsage } from '~/lib/pricing'
+import { buildSidechainFilter } from '~/server/db/query-filters'
 
 export const getWhatIfAll = createServerFn({ method: 'GET' })
   .handler(async () => queryWhatIf(null))
@@ -19,7 +20,7 @@ function queryWhatIf(days: number | null) {
     ? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
     : null
   const timeFilter = cutoff ? gte(messages.timestamp, cutoff) : sql`1=1`
-  const sidechainFilter = eq(messages.isSidechain, false)
+  const sidechainFilter = buildSidechainFilter()
 
   // Per-model token breakdown
   const modelData = db.select({

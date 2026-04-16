@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getDb } from '~/server/db/client'
 import { messages } from '~/server/db/schema'
 import { sql, eq, and, gte } from 'drizzle-orm'
+import { buildSidechainFilter } from '~/server/db/query-filters'
 
 export const getDailyUsageAll = createServerFn({ method: 'GET' })
   .handler(async () => queryDailyUsage(null))
@@ -18,7 +19,7 @@ function queryDailyUsage(days: number | null) {
     ? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
     : null
   const timeFilter = cutoff ? gte(messages.timestamp, cutoff) : sql`1=1`
-  const sidechainFilter = eq(messages.isSidechain, false)
+  const sidechainFilter = buildSidechainFilter()
 
   const daily = db.select({
     date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
