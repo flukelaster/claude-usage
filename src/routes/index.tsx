@@ -14,6 +14,7 @@ import { ExportButton } from '~/components/export-button'
 import { DataExportButton } from '~/components/data-export-button'
 import { UnknownModelBanner } from '~/components/unknown-model-banner'
 import { BudgetProgress } from '~/components/budget-progress'
+import { SubscriptionStatus } from '~/components/subscription-status'
 import { KpiGrid } from '~/components/cards/kpi-grid'
 import { TopListCard } from '~/components/cards/top-list-card'
 import { Card } from '~/components/ui/card'
@@ -124,6 +125,8 @@ function OverviewPage() {
           </span>
         </div>
       )}
+
+      <SubscriptionStatus />
 
       <BudgetProgress />
 

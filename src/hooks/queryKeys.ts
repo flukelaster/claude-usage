@@ -23,6 +23,7 @@ export const queryKeys = {
   contextUtilization: (period: Period) => ['contextUtilization', period] as const,
   comparison: (windowDays: number) => ['comparison', windowDays] as const,
   calendar: (year: number) => ['calendar', year] as const,
+  subscription: () => ['subscription'] as const,
 }
 
 /**
@@ -49,4 +50,5 @@ export const dataQueryKeys = [
   'contextUtilization',
   'comparison',
   'calendar',
+  'subscription',
 ] as const

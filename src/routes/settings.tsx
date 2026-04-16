@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { PRICING, PRICING_LAST_VERIFIED } from '~/lib/pricing'
 import { formatRelativeTime } from '~/lib/format'
-import { RefreshCw, AlertTriangle, FolderOpen, Database, DollarSign, Calendar, Download, Upload } from 'lucide-react'
+import { RefreshCw, AlertTriangle, FolderOpen, Database, DollarSign, Calendar, Download, Upload, Zap } from 'lucide-react'
 import {
   useAppSettings,
   useSetMonthlyBudget,
@@ -11,6 +11,8 @@ import {
 import { useLastSync, useSyncLogs } from '~/hooks/useSync'
 import { useHomedir } from '~/hooks/useSettings'
 import { useExportDatabase, useImportDatabase } from '~/hooks/useBackup'
+import { useSubscription, useSetSubscriptionPlan } from '~/hooks/useSubscription'
+import { SUBSCRIPTION_PLANS, PLAN_IDS } from '~/lib/subscription'
 import { SidechainToggle } from '~/components/sidechain-toggle'
 import { UnknownModelBanner } from '~/components/unknown-model-banner'
 import type { DatabaseDump } from '~/server/functions/db-backup'
@@ -33,6 +35,10 @@ function SettingsPage() {
   const exportDb = useExportDatabase()
   const importDb = useImportDatabase()
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge')
+
+  const { data: subscription } = useSubscription()
+  const setPlan = useSetSubscriptionPlan()
+  const activePlanId = subscription?.plan.id ?? 'none'
 
   const currentBudget = settings?.monthlyBudgetUsd ?? null
   const currentCycle = settings?.billingCycleStartDay ?? 1
@@ -169,6 +175,58 @@ function SettingsPage() {
               </button>
             </form>
           </div>
+        </div>
+      </div>
+
+      {/* Subscription plan */}
+      <div
+        className="rounded-lg p-6"
+        style={{
+          backgroundColor: 'var(--color-card)',
+          border: '1px solid var(--color-border)',
+        }}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Zap size={18} style={{ color: 'var(--color-primary)' }} />
+          <h3 className="text-lg">Subscription Plan</h3>
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--color-muted-foreground)' }}>
+          Pick the Claude plan you use so the dashboard can track rolling
+          usage against its quota. The{' '}
+          <a
+            href="/subscription"
+            className="underline"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            subscription page
+          </a>{' '}
+          has the detailed gauges and the custom-plan editor.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {PLAN_IDS.map((id) => {
+            const plan = SUBSCRIPTION_PLANS[id]
+            const active = id === activePlanId
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setPlan.mutate({ planId: id })}
+                disabled={setPlan.isPending}
+                className="rounded-md px-3 py-1.5 text-sm"
+                style={{
+                  backgroundColor: active
+                    ? 'var(--color-primary)'
+                    : 'var(--color-secondary)',
+                  color: active
+                    ? 'var(--color-primary-foreground)'
+                    : 'var(--color-foreground)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                {plan.name}
+              </button>
+            )
+          })}
         </div>
       </div>
 

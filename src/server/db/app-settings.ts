@@ -14,6 +14,11 @@ export type SettingKey =
   | 'includeSidechain'
   | 'monthlyBudgetUsd'
   | 'billingCycleStartDay'
+  | 'subscriptionPlan'
+  | 'customFiveHourInput'
+  | 'customFiveHourOutput'
+  | 'customWeeklyInput'
+  | 'customWeeklyOutput'
 
 function prefixed(key: SettingKey): string {
   return `${PREFIX}${key}`

@@ -27,6 +27,7 @@ import {
   Maximize2,
   GitCompare,
   CalendarRange,
+  Zap,
 } from 'lucide-react'
 import { useTheme } from '~/lib/theme'
 import { ThemeToggle } from '~/components/theme-toggle'
@@ -38,6 +39,7 @@ const navItems = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/daily', label: 'Daily Usage', icon: CalendarDays },
   { to: '/calendar', label: 'Calendar', icon: CalendarRange },
+  { to: '/subscription', label: 'Subscription', icon: Zap },
   { to: '/forecast', label: 'Cost Forecast', icon: TrendingUp },
   { to: '/activity', label: 'Peak Hours', icon: Clock },
   { to: '/projects', label: 'Projects', icon: FolderOpen },
