@@ -24,6 +24,8 @@ import {
   Hammer,
   AlertOctagon,
   Tag as TagIcon,
+  Maximize2,
+  GitCompare,
 } from 'lucide-react'
 import { useTheme } from '~/lib/theme'
 import { ThemeToggle } from '~/components/theme-toggle'
@@ -43,6 +45,8 @@ const navItems = [
   { to: '/anomalies', label: 'Anomalies', icon: AlertOctagon },
   { to: '/what-if', label: 'What-If', icon: FlaskConical },
   { to: '/cache-analysis', label: 'Cache Analysis', icon: Database },
+  { to: '/context', label: 'Context Window', icon: Maximize2 },
+  { to: '/compare', label: 'Period Compare', icon: GitCompare },
   { to: '/tags', label: 'Tags', icon: TagIcon },
   { to: '/settings', label: 'Settings', icon: Settings },
 ] as const

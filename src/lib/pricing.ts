@@ -27,6 +27,28 @@ const MODEL_FAMILY: Record<string, string> = {
   'claude-haiku-4-5': 'haiku-4.5',
 }
 
+/**
+ * Maximum context window per family, in tokens. Used by the context
+ * utilization analytics to normalize input-token totals into a % fill.
+ * Values reflect the current max window each model accepts on the
+ * platform (verified alongside PRICING_LAST_VERIFIED).
+ */
+export const MODEL_CONTEXT_WINDOW: Record<string, number> = {
+  'opus-4.6': 200_000,
+  'opus-4.5': 200_000,
+  'opus-4.1': 200_000,
+  'opus-4': 200_000,
+  'sonnet-4.6': 1_000_000,
+  'sonnet-4.5': 200_000,
+  'sonnet-4': 200_000,
+  'haiku-4.5': 200_000,
+}
+
+export function getModelContextWindow(model: string): number {
+  const family = getModelFamily(model)
+  return MODEL_CONTEXT_WINDOW[family] ?? 200_000
+}
+
 export const PRICING: Record<string, ModelPricing> = {
   'opus-4.6':   { input:  5.00, output: 25.00, cacheWrite5m:  6.25, cacheWrite1h: 10.00, cacheRead: 0.50 },
   'opus-4.5':   { input:  5.00, output: 25.00, cacheWrite5m:  6.25, cacheWrite1h: 10.00, cacheRead: 0.50 },

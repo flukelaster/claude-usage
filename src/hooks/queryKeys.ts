@@ -20,6 +20,8 @@ export const queryKeys = {
   budget: () => ['budget'] as const,
   tools: (period: Period) => ['tools', period] as const,
   anomalies: () => ['anomalies'] as const,
+  contextUtilization: (period: Period) => ['contextUtilization', period] as const,
+  comparison: (windowDays: number) => ['comparison', windowDays] as const,
 }
 
 /**
@@ -43,4 +45,6 @@ export const dataQueryKeys = [
   'budget',
   'tools',
   'anomalies',
+  'contextUtilization',
+  'comparison',
 ] as const

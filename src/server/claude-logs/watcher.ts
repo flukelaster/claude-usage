@@ -26,8 +26,24 @@ const state: WatcherState = {
   error: null,
 }
 
+// Pending long-poll subscribers — each wants to be told the moment the
+// changeCount advances past their `sinceCount`. Resolving fires the
+// current count and drops the subscriber; the server function layer
+// re-subscribes for the next update.
+type Subscriber = { sinceCount: number; resolve: (count: number) => void }
+const subscribers = new Set<Subscriber>()
+
 let watcher: FSWatcher | null = null
 let startPromise: Promise<void> | null = null
+
+function fanOut() {
+  for (const sub of subscribers) {
+    if (state.changeCount > sub.sinceCount) {
+      sub.resolve(state.changeCount)
+      subscribers.delete(sub)
+    }
+  }
+}
 
 async function startWatcher(): Promise<void> {
   if (watcher) return
@@ -48,6 +64,7 @@ async function startWatcher(): Promise<void> {
     const bump = () => {
       state.lastChangeAt = new Date().toISOString()
       state.changeCount += 1
+      fanOut()
     }
 
     watcher.on('add', bump)
@@ -82,4 +99,34 @@ export function getWatcherSnapshot() {
     startedAt: state.startedAt,
     error: state.error,
   }
+}
+
+/**
+ * Long-poll for a watcher change. Resolves as soon as the watcher tick
+ * count exceeds `sinceCount`, or after `timeoutMs` with the current
+ * count — whichever comes first. The caller re-subscribes after each
+ * resolution, giving near-real-time sync triggers without SSE.
+ */
+export function waitForChange(sinceCount: number, timeoutMs = 25_000): Promise<number> {
+  ensureWatcher()
+
+  if (state.changeCount > sinceCount) {
+    return Promise.resolve(state.changeCount)
+  }
+
+  return new Promise<number>((resolve) => {
+    const sub: Subscriber = { sinceCount, resolve }
+    subscribers.add(sub)
+
+    const timer = setTimeout(() => {
+      subscribers.delete(sub)
+      resolve(state.changeCount)
+    }, timeoutMs)
+
+    // Wrap resolve to clear the timeout when delivered via fanOut.
+    sub.resolve = (count: number) => {
+      clearTimeout(timer)
+      resolve(count)
+    }
+  })
 }
