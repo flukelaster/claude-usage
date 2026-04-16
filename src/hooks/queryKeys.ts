@@ -22,6 +22,7 @@ export const queryKeys = {
   anomalies: () => ['anomalies'] as const,
   contextUtilization: (period: Period) => ['contextUtilization', period] as const,
   comparison: (windowDays: number) => ['comparison', windowDays] as const,
+  calendar: (year: number) => ['calendar', year] as const,
 }
 
 /**
@@ -47,4 +48,5 @@ export const dataQueryKeys = [
   'anomalies',
   'contextUtilization',
   'comparison',
+  'calendar',
 ] as const

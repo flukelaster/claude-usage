@@ -26,15 +26,18 @@ import {
   Tag as TagIcon,
   Maximize2,
   GitCompare,
+  CalendarRange,
 } from 'lucide-react'
 import { useTheme } from '~/lib/theme'
 import { ThemeToggle } from '~/components/theme-toggle'
+import { CommandPalette } from '~/components/command-palette'
 import { useAutoSync } from '~/hooks/useAutoSync'
 import '~/styles/globals.css'
 
 const navItems = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/daily', label: 'Daily Usage', icon: CalendarDays },
+  { to: '/calendar', label: 'Calendar', icon: CalendarRange },
   { to: '/forecast', label: 'Cost Forecast', icon: TrendingUp },
   { to: '/activity', label: 'Peak Hours', icon: Clock },
   { to: '/projects', label: 'Projects', icon: FolderOpen },
@@ -80,6 +83,7 @@ function RootComponent() {
     <RootDocument>
       <QueryClientProvider client={queryClient}>
         <AutoSyncDriver />
+        <CommandPalette />
         <div className="flex h-screen">
           <Sidebar theme={theme} onToggleTheme={toggle} />
           <main className="flex-1 overflow-y-auto p-8">
