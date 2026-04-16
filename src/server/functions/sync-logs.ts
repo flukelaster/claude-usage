@@ -292,13 +292,25 @@ export const syncLogs = createServerFn({ method: 'POST' }).handler(async (): Pro
     })
     .run()
 
-  return {
+  const result = {
     projectsFound: projectFolders.length,
     filesProcessed,
     messagesAdded,
     errors,
     durationMs: Date.now() - startTime,
   }
+
+  // Fan out to webhook subscribers. Loaded dynamically so the trigger
+  // module's transitive imports (e.g. node:crypto) stay out of the
+  // browser bundle that ships this file's stub.
+  try {
+    const { runPostSyncTriggers } = await import('~/server/webhooks/triggers')
+    await runPostSyncTriggers({ syncResult: result })
+  } catch (err) {
+    console.error('[sync] webhook dispatch failed:', err)
+  }
+
+  return result
 })
 
 export const getLastSyncTime = createServerFn({ method: 'GET' }).handler(async (): Promise<string | null> => {

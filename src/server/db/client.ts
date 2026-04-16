@@ -91,6 +91,35 @@ function createDb() {
       PRIMARY KEY (tag_id, entity_type, entity_id)
     );
 
+    CREATE TABLE IF NOT EXISTS webhooks (
+      id TEXT PRIMARY KEY,
+      url TEXT NOT NULL,
+      label TEXT,
+      events TEXT NOT NULL,
+      enabled INTEGER DEFAULT 1,
+      secret TEXT,
+      created_at TEXT NOT NULL,
+      last_delivered_at TEXT,
+      last_error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS webhook_deliveries (
+      id TEXT PRIMARY KEY,
+      webhook_id TEXT NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+      event TEXT NOT NULL,
+      attempted_at TEXT NOT NULL,
+      status INTEGER,
+      ok INTEGER DEFAULT 0,
+      duration_ms INTEGER,
+      error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS webhook_state (
+      key TEXT PRIMARY KEY,
+      last_fired_at TEXT,
+      last_value TEXT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
     CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
@@ -102,6 +131,8 @@ function createDb() {
     CREATE INDEX IF NOT EXISTS idx_tool_uses_timestamp ON tool_uses(timestamp);
     CREATE INDEX IF NOT EXISTS idx_entity_tags_tag ON entity_tags(tag_id);
     CREATE INDEX IF NOT EXISTS idx_entity_tags_entity ON entity_tags(entity_type, entity_id);
+    CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_hook ON webhook_deliveries(webhook_id);
+    CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_time ON webhook_deliveries(attempted_at);
   `)
 
   return db

@@ -28,6 +28,7 @@ import {
   GitCompare,
   CalendarRange,
   Zap,
+  Webhook,
 } from 'lucide-react'
 import { useTheme } from '~/lib/theme'
 import { ThemeToggle } from '~/components/theme-toggle'
@@ -53,6 +54,7 @@ const navItems = [
   { to: '/context', label: 'Context Window', icon: Maximize2 },
   { to: '/compare', label: 'Period Compare', icon: GitCompare },
   { to: '/tags', label: 'Tags', icon: TagIcon },
+  { to: '/webhooks', label: 'Webhooks', icon: Webhook },
   { to: '/settings', label: 'Settings', icon: Settings },
 ] as const
 

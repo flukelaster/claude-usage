@@ -203,6 +203,36 @@ function WindowSection({
         />
       </div>
 
+      {w.capReachedAt && (
+        <div
+          className="mt-3 rounded-md p-3 text-xs"
+          style={{
+            backgroundColor: 'var(--color-background)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-foreground)',
+          }}
+        >
+          <p>
+            <strong>At current burn rate</strong>, you'll hit the cap{' '}
+            <span style={{ color: 'var(--color-primary)' }}>
+              in {formatRelativeMinutes(w.capReachedAt)}
+            </span>{' '}
+            ({new Date(w.capReachedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })})
+          </p>
+          <p className="mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+            Burn: {Math.round(w.burnInPerMinute).toLocaleString()} input / min ·{' '}
+            {Math.round(w.burnOutPerMinute).toLocaleString()} output / min
+            {w.inputCapReachedAt && w.outputCapReachedAt && w.inputCapReachedAt !== w.outputCapReachedAt && (
+              <>
+                {' '}— input would hit{' '}
+                {new Date(w.inputCapReachedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                , output{' '}
+                {new Date(w.outputCapReachedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+              </>
+            )}
+          </p>
+        </div>
+      )}
       {w.resetsAt && (
         <p
           className="mt-3 text-xs"
@@ -225,6 +255,16 @@ function WindowSection({
       </p>
     </>
   )
+}
+
+function formatRelativeMinutes(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now()
+  if (ms <= 0) return 'now'
+  const totalMin = Math.round(ms / 60_000)
+  if (totalMin < 60) return `${totalMin}m`
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
 function Gauge({

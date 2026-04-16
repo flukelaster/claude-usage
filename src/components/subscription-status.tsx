@@ -90,15 +90,31 @@ function WindowBar({ window: w }: { window: WindowUsage }) {
         <span>
           {formatTokens(w.inputTokens)} in · {formatTokens(w.outputTokens)} out
         </span>
-        {w.resetsAt && (
-          <span>
-            resets {new Date(w.resetsAt).toLocaleTimeString(undefined, {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
+        {w.capReachedAt ? (
+          <span style={{ color: 'var(--color-primary)' }}>
+            cap in {formatRelativeMinutes(w.capReachedAt)}
           </span>
+        ) : (
+          w.resetsAt && (
+            <span>
+              resets {new Date(w.resetsAt).toLocaleTimeString(undefined, {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </span>
+          )
         )}
       </div>
     </div>
   )
+}
+
+function formatRelativeMinutes(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now()
+  if (ms <= 0) return 'now'
+  const totalMin = Math.round(ms / 60_000)
+  if (totalMin < 60) return `${totalMin}m`
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
 }

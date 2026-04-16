@@ -26,6 +26,15 @@ export interface WindowUsage {
   utilizationPercent: number | null
   resetsAt: string | null
   messageCount: number
+  // Linear forecast based on the last 60 minutes of activity.
+  burnInPerMinute: number
+  burnOutPerMinute: number
+  // Estimated wall-clock time when input or output cap is reached at
+  // the current burn rate. null = unlimited or zero burn rate.
+  inputCapReachedAt: string | null
+  outputCapReachedAt: string | null
+  // Most-imminent of the two; the gauge headlines this.
+  capReachedAt: string | null
 }
 
 export interface SubscriptionStatus {
@@ -105,6 +114,15 @@ function measureWindow(
   outputLimit: number | null,
 ): WindowUsage {
   const raw = measureRaw(windowHours)
+  // Burn rate sampled from a shorter recent window so the prediction
+  // reacts to "I just kicked off a long session" rather than averaging
+  // over hours of idle time.
+  const burnSampleHours = Math.min(1, windowHours)
+  const burn = measureRaw(burnSampleHours)
+  const burnMinutes = burnSampleHours * 60
+  const burnIn = burnMinutes > 0 ? burn.inputTokens / burnMinutes : 0
+  const burnOut = burnMinutes > 0 ? burn.outputTokens / burnMinutes : 0
+
   const finiteIn = inputLimit !== null && Number.isFinite(inputLimit) ? inputLimit : null
   const finiteOut =
     outputLimit !== null && Number.isFinite(outputLimit) ? outputLimit : null
@@ -130,6 +148,11 @@ function measureWindow(
       ).toISOString()
     : null
 
+  // Linear forecast: minutes until the remaining headroom is consumed.
+  const inputCapReachedAt = predictReach(raw.inputTokens, finiteIn, burnIn)
+  const outputCapReachedAt = predictReach(raw.outputTokens, finiteOut, burnOut)
+  const capReachedAt = earliestIso(inputCapReachedAt, outputCapReachedAt)
+
   return {
     label,
     windowHours,
@@ -142,7 +165,34 @@ function measureWindow(
     utilizationPercent,
     resetsAt,
     messageCount: raw.messageCount,
+    burnInPerMinute: burnIn,
+    burnOutPerMinute: burnOut,
+    inputCapReachedAt,
+    outputCapReachedAt,
+    capReachedAt,
   }
+}
+
+function predictReach(
+  used: number,
+  limit: number | null,
+  burnPerMinute: number,
+): string | null {
+  if (limit === null || limit <= 0) return null
+  if (used >= limit) return new Date().toISOString() // already over
+  if (burnPerMinute <= 0) return null
+  const remaining = limit - used
+  const minutes = remaining / burnPerMinute
+  // Cap predictions to a reasonable horizon so the UI doesn't show
+  // "reached in 47 days" when burn rate is negligible.
+  if (minutes > 60 * 24 * 7) return null
+  return new Date(Date.now() + minutes * 60_000).toISOString()
+}
+
+function earliestIso(a: string | null, b: string | null): string | null {
+  if (!a) return b
+  if (!b) return a
+  return new Date(a).getTime() < new Date(b).getTime() ? a : b
 }
 
 function measureRaw(windowHours: number) {

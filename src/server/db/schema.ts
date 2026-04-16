@@ -103,3 +103,50 @@ export const entityTags = sqliteTable('entity_tags', {
   index('idx_entity_tags_tag').on(table.tagId),
   index('idx_entity_tags_entity').on(table.entityType, table.entityId),
 ])
+
+/**
+ * Outbound webhooks the dashboard can fire when something interesting
+ * happens (budget crossed, subscription quota crossed, anomaly detected,
+ * sync error). One row per configured endpoint; the events array is
+ * stored as a JSON string column.
+ */
+export const webhooks = sqliteTable('webhooks', {
+  id: text('id').primaryKey(),
+  url: text('url').notNull(),
+  label: text('label'),
+  events: text('events').notNull(), // JSON: array of event ids the hook listens to
+  enabled: integer('enabled', { mode: 'boolean' }).default(true),
+  secret: text('secret'),            // optional shared secret for HMAC sig
+  createdAt: text('created_at').notNull(),
+  lastDeliveredAt: text('last_delivered_at'),
+  lastError: text('last_error'),
+})
+
+/**
+ * Per-attempt delivery log. Used by the UI to render recent attempts so
+ * the operator can debug a misconfigured endpoint.
+ */
+export const webhookDeliveries = sqliteTable('webhook_deliveries', {
+  id: text('id').primaryKey(),
+  webhookId: text('webhook_id').notNull().references(() => webhooks.id, { onDelete: 'cascade' }),
+  event: text('event').notNull(),
+  attemptedAt: text('attempted_at').notNull(),
+  status: integer('status'),         // HTTP status code, null on transport error
+  ok: integer('ok', { mode: 'boolean' }).default(false),
+  durationMs: integer('duration_ms'),
+  error: text('error'),
+}, (table) => [
+  index('idx_webhook_deliveries_hook').on(table.webhookId),
+  index('idx_webhook_deliveries_time').on(table.attemptedAt),
+])
+
+/**
+ * Per-event "watermark" — the last value we saw the user notified about.
+ * Lets us fire webhooks only when a threshold is *crossed* on this sync,
+ * not every single time a sync runs while the threshold remains tripped.
+ */
+export const webhookState = sqliteTable('webhook_state', {
+  key: text('key').primaryKey(),     // e.g. "budget" or "subscription:5h"
+  lastFiredAt: text('last_fired_at'),
+  lastValue: text('last_value'),     // JSON-encoded last snapshot
+})
