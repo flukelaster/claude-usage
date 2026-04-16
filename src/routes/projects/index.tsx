@@ -1,18 +1,20 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { getProjects } from '~/server/functions/get-projects'
+import { FolderOpen } from 'lucide-react'
+
+import { useProjects } from '~/hooks/useProjects'
 import { formatTokens, formatCost, formatRelativeTime } from '~/lib/format'
+import { Card } from '~/components/ui/card'
+import { EmptyState } from '~/components/ui/empty-state'
+import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
+import { DataTable } from '~/components/tables/data-table'
+import type { ProjectSummary } from '~/types'
 
 export const Route = createFileRoute('/projects/')({
   component: ProjectsPage,
 })
 
 function ProjectsPage() {
-  const { data: projectsList, isLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => getProjects(),
-    refetchInterval: 60_000,
-  })
+  const { data, isLoading } = useProjects()
 
   return (
     <div className="space-y-6">
@@ -23,69 +25,95 @@ function ProjectsPage() {
         </p>
       </div>
 
-      <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Project</th>
-              <th className="px-4 py-3 text-right font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Sessions</th>
-              <th className="px-4 py-3 text-right font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Messages</th>
-              <th className="px-4 py-3 text-right font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Tokens</th>
-              <th className="px-4 py-3 text-right font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Cost</th>
-              <th className="px-4 py-3 text-right font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Last Active</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  {[...Array(6)].map((_, j) => (
-                    <td key={j} className="px-4 py-3">
-                      <div className="h-4 w-20 animate-pulse rounded" style={{ backgroundColor: 'var(--color-secondary)' }} />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : projectsList?.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center" style={{ color: 'var(--color-muted-foreground)' }}>
-                  No projects found. Sync logs first.
-                </td>
-              </tr>
-            ) : (
-              projectsList?.map((p) => (
-                <tr
-                  key={p.id}
-                  className="transition-colors hover:bg-[#e8e6dc]/50 cursor-pointer"
-                  style={{ borderBottom: '1px solid var(--color-border)' }}
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      to="/projects/$projectId"
-                      params={{ projectId: p.id }}
-                      className="font-medium"
-                      style={{ color: 'var(--color-foreground)' }}
-                    >
-                      {p.displayName}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-right" style={{ color: 'var(--color-muted-foreground)' }}>{p.sessionCount}</td>
-                  <td className="px-4 py-3 text-right" style={{ color: 'var(--color-muted-foreground)' }}>{p.messageCount}</td>
-                  <td className="px-4 py-3 text-right" style={{ color: 'var(--color-muted-foreground)' }}>
-                    {formatTokens((p.totalInputTokens ?? 0) + (p.totalOutputTokens ?? 0) + (p.totalCacheCreationTokens ?? 0) + (p.totalCacheReadTokens ?? 0))}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium" style={{ color: 'var(--color-foreground)' }}>
+      {isLoading && <LoadingSkeleton cols={1} height={280} />}
+
+      {!isLoading && (!data || data.length === 0) && (
+        <EmptyState
+          title="No projects yet"
+          description="Run `pnpm sync` or click Sync Now on the overview page to import Claude Code logs."
+          icon={<FolderOpen size={28} />}
+        />
+      )}
+
+      {data && data.length > 0 && (
+        <Card>
+          <DataTable<ProjectSummary>
+            rowKey={(p) => p.id}
+            rows={data}
+            columns={[
+              {
+                key: 'name',
+                header: 'Project',
+                cell: (p) => (
+                  <Link
+                    to="/projects/$projectId"
+                    params={{ projectId: p.id }}
+                    className="font-medium hover:underline"
+                    style={{ color: 'var(--color-foreground)' }}
+                  >
+                    {p.displayName}
+                  </Link>
+                ),
+              },
+              {
+                key: 'sessions',
+                header: 'Sessions',
+                align: 'right',
+                cell: (p) => (
+                  <span style={{ color: 'var(--color-muted-foreground)' }}>
+                    {p.sessionCount}
+                  </span>
+                ),
+              },
+              {
+                key: 'messages',
+                header: 'Messages',
+                align: 'right',
+                cell: (p) => (
+                  <span style={{ color: 'var(--color-muted-foreground)' }}>
+                    {p.messageCount}
+                  </span>
+                ),
+              },
+              {
+                key: 'tokens',
+                header: 'Tokens',
+                align: 'right',
+                cell: (p) => (
+                  <span style={{ color: 'var(--color-muted-foreground)' }}>
+                    {formatTokens(
+                      (p.totalInputTokens ?? 0) +
+                        (p.totalOutputTokens ?? 0) +
+                        (p.totalCacheCreationTokens ?? 0) +
+                        (p.totalCacheReadTokens ?? 0),
+                    )}
+                  </span>
+                ),
+              },
+              {
+                key: 'cost',
+                header: 'Cost',
+                align: 'right',
+                cell: (p) => (
+                  <span className="font-medium tabular-nums">
                     {formatCost(p.totalCost ?? 0)}
-                  </td>
-                  <td className="px-4 py-3 text-right" style={{ color: 'var(--color-muted-foreground)' }}>
+                  </span>
+                ),
+              },
+              {
+                key: 'last',
+                header: 'Last Active',
+                align: 'right',
+                cell: (p) => (
+                  <span style={{ color: 'var(--color-muted-foreground)' }}>
                     {p.lastActiveAt ? formatRelativeTime(new Date(p.lastActiveAt)) : '—'}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  </span>
+                ),
+              },
+            ]}
+          />
+        </Card>
+      )}
     </div>
   )
 }

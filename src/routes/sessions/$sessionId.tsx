@@ -1,13 +1,24 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { getSessionDetail } from '~/server/functions/get-sessions'
-import { formatTokens, formatCost, formatDuration } from '~/lib/format'
-import { getModelDisplayName } from '~/lib/pricing'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from 'recharts'
 import { ArrowLeft } from 'lucide-react'
+
+import { useSessionDetail } from '~/hooks/useSessions'
+import { formatTokens, formatCost, formatDuration } from '~/lib/format'
+import { getModelDisplayName } from '~/lib/pricing'
+import { Card } from '~/components/ui/card'
+import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
+import { EmptyState } from '~/components/ui/empty-state'
+
+const tooltipStyle = {
+  backgroundColor: 'var(--color-card)',
+  border: '1px solid var(--color-border)',
+  borderRadius: 8,
+  fontSize: 13,
+  color: 'var(--color-foreground)',
+}
 
 export const Route = createFileRoute('/sessions/$sessionId')({
   component: SessionDetailPage,
@@ -15,35 +26,32 @@ export const Route = createFileRoute('/sessions/$sessionId')({
 
 function SessionDetailPage() {
   const { sessionId } = Route.useParams()
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['session', sessionId],
-    queryFn: () => getSessionDetail({ data: { sessionId } }),
-  })
+  const { data, isLoading } = useSessionDetail(sessionId)
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="h-8 w-48 animate-pulse rounded" style={{ backgroundColor: 'var(--color-secondary)' }} />
-        <div className="h-64 animate-pulse rounded-lg" style={{ backgroundColor: 'var(--color-secondary)' }} />
+        <LoadingSkeleton cols={1} height={220} />
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="py-20 text-center">
-        <p style={{ color: 'var(--color-muted-foreground)' }}>Session not found</p>
-        <Link to="/sessions" className="mt-4 inline-block text-sm" style={{ color: 'var(--color-primary)' }}>
-          Back to sessions
-        </Link>
-      </div>
+      <EmptyState
+        title="Session not found"
+        action={
+          <Link to="/sessions" className="text-sm" style={{ color: 'var(--color-primary)' }}>
+            Back to sessions
+          </Link>
+        }
+      />
     )
   }
 
   const { session, messages } = data
 
-  // Build cumulative cost data
   let cumCost = 0
   const cumulativeData = messages.map((msg, i) => {
     cumCost += msg.estimatedCostUsd ?? 0
@@ -52,14 +60,25 @@ function SessionDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <Link to="/sessions" className="mb-2 inline-flex items-center gap-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+        <Link
+          to="/sessions"
+          className="mb-2 inline-flex items-center gap-1 text-sm"
+          style={{ color: 'var(--color-muted-foreground)' }}
+        >
           <ArrowLeft size={14} /> Sessions
         </Link>
         <h2 className="text-3xl">{session.title || session.slug || session.id.slice(0, 8)}</h2>
-        <div className="mt-1 flex items-center gap-3 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-          <Link to="/projects/$projectId" params={{ projectId: session.projectId }} style={{ color: 'var(--color-muted-foreground)' }}>
+        <div
+          className="mt-1 flex items-center gap-3 text-sm"
+          style={{ color: 'var(--color-muted-foreground)' }}
+        >
+          <Link
+            to="/projects/$projectId"
+            params={{ projectId: session.projectId }}
+            className="hover:underline"
+            style={{ color: 'var(--color-muted-foreground)' }}
+          >
             {session.projectName}
           </Link>
           <span>&middot;</span>
@@ -71,28 +90,31 @@ function SessionDetailPage() {
         </div>
       </div>
 
-      {/* Cumulative cost chart */}
       {cumulativeData.length > 1 && (
-        <div className="rounded-lg p-6" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-          <h3 className="mb-4 text-lg">Cumulative Cost</h3>
+        <Card title="Cumulative Cost">
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={cumulativeData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
-              <XAxis dataKey="index" tick={{ fontSize: 11, fill: '#87867f' }} label={{ value: 'Message #', position: 'insideBottom', offset: -5, fill: '#87867f', fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(v) => `$${v.toFixed(2)}`} />
+              <XAxis
+                dataKey="index"
+                tick={{ fontSize: 11, fill: '#87867f' }}
+                label={{ value: 'Message #', position: 'insideBottom', offset: -5, fill: '#87867f', fontSize: 11 }}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: '#87867f' }}
+                tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+              />
               <Tooltip
-                contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13 }}
+                contentStyle={tooltipStyle}
                 formatter={(value: number) => [formatCost(value), 'Cumulative Cost']}
               />
               <Line type="monotone" dataKey="cost" stroke="#c96442" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       )}
 
-      {/* Message timeline */}
-      <div className="rounded-lg p-6" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-        <h3 className="mb-4 text-lg">Message Timeline</h3>
+      <Card title="Message Timeline">
         <div className="space-y-2">
           {messages.map((msg, i) => (
             <div
@@ -101,8 +123,16 @@ function SessionDetailPage() {
               style={{ backgroundColor: i % 2 === 0 ? 'transparent' : 'var(--color-background)' }}
             >
               <div className="flex items-center gap-4">
-                <span className="w-8 text-right text-xs" style={{ color: 'var(--color-muted-foreground)' }}>#{i + 1}</span>
-                <span className="rounded px-2 py-0.5 text-xs" style={{ backgroundColor: 'var(--color-secondary)', color: 'var(--color-secondary-foreground)' }}>
+                <span className="w-8 text-right text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                  #{i + 1}
+                </span>
+                <span
+                  className="rounded px-2 py-0.5 text-xs"
+                  style={{
+                    backgroundColor: 'var(--color-secondary)',
+                    color: 'var(--color-secondary-foreground)',
+                  }}
+                >
                   {getModelDisplayName(msg.model)}
                 </span>
                 {msg.durationMs && (
@@ -120,14 +150,16 @@ function SessionDetailPage() {
                 <span>in: {formatTokens(msg.inputTokens ?? 0)}</span>
                 <span>out: {formatTokens(msg.outputTokens ?? 0)}</span>
                 {(msg.cacheReadTokens ?? 0) > 0 && (
-                  <span style={{ color: 'var(--color-muted-foreground)' }}>cache: {formatTokens(msg.cacheReadTokens ?? 0)}</span>
+                  <span>cache: {formatTokens(msg.cacheReadTokens ?? 0)}</span>
                 )}
-                <span className="font-medium" style={{ color: 'var(--color-foreground)' }}>{formatCost(msg.estimatedCostUsd ?? 0)}</span>
+                <span className="font-medium" style={{ color: 'var(--color-foreground)' }}>
+                  {formatCost(msg.estimatedCostUsd ?? 0)}
+                </span>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

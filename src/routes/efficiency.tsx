@@ -1,30 +1,22 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { getEfficiencyAll, getEfficiency30d, getEfficiency90d } from '~/server/functions/get-efficiency'
-import { formatCost, formatTokens } from '~/lib/format'
-import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line, Legend, ZAxis
+  ResponsiveContainer, LineChart, Line, Legend, ZAxis,
 } from 'recharts'
 import { Terminal, Code } from 'lucide-react'
+
+import { useEfficiency } from '~/hooks/useEfficiency'
+import { formatCost, formatTokens } from '~/lib/format'
+import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
+import { Card } from '~/components/ui/card'
+import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
+import { EmptyState } from '~/components/ui/empty-state'
+import { DataTable } from '~/components/tables/data-table'
 
 export const Route = createFileRoute('/efficiency')({
   component: EfficiencyPage,
 })
-
-const periodFns: Record<Period, typeof getEfficiencyAll> = {
-  all: getEfficiencyAll,
-  '90d': getEfficiency90d,
-  '30d': getEfficiency30d,
-}
-
-const cardStyle = {
-  backgroundColor: 'var(--color-card)',
-  border: '1px solid var(--color-border)',
-  boxShadow: '0px 0px 0px 1px var(--color-border)',
-}
 
 const tooltipStyle = {
   backgroundColor: 'var(--color-card)',
@@ -36,12 +28,7 @@ const tooltipStyle = {
 
 function EfficiencyPage() {
   const [period, setPeriod] = useState<Period>('30d')
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['efficiency', period],
-    queryFn: () => periodFns[period](),
-    refetchInterval: 60_000,
-  })
+  const { data, isLoading } = useEfficiency(period)
 
   if (isLoading || !data) {
     return (
@@ -50,22 +37,13 @@ function EfficiencyPage() {
           <h2 className="text-3xl">Efficiency</h2>
           <PeriodFilter value={period} onChange={setPeriod} />
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          {[...Array(2)].map((_, i) => (
-            <div key={i} className="rounded-lg p-6 animate-pulse" style={cardStyle}>
-              <div className="h-4 w-20 rounded" style={{ backgroundColor: 'var(--color-secondary)' }} />
-              <div className="mt-3 h-8 w-32 rounded" style={{ backgroundColor: 'var(--color-secondary)' }} />
-            </div>
-          ))}
-        </div>
+        <LoadingSkeleton cols={2} height={200} />
       </div>
     )
   }
 
   const cliData = data.entrypointComparison.find((e) => e.entrypoint === 'cli')
   const vscodeData = data.entrypointComparison.find((e) => e.entrypoint === 'claude-vscode')
-
-  // Split scatter data by entrypoint
   const cliScatter = data.scatterData.filter((s) => s.entrypoint === 'cli')
   const vscodeScatter = data.scatterData.filter((s) => s.entrypoint === 'claude-vscode')
 
@@ -81,14 +59,9 @@ function EfficiencyPage() {
         <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
-      {/* CLI vs VSCode comparison */}
       <div className={`grid gap-4 ${cliData && vscodeData ? 'grid-cols-2' : 'grid-cols-1'}`}>
         {cliData && (
-          <EntrypointCard
-            label="CLI"
-            icon={<Terminal size={20} />}
-            data={cliData}
-          />
+          <EntrypointCard label="CLI" icon={<Terminal size={20} />} data={cliData} />
         )}
         {vscodeData && (
           <EntrypointCard
@@ -98,28 +71,27 @@ function EfficiencyPage() {
           />
         )}
         {!cliData && !vscodeData && (
-          <div className="rounded-lg p-6" style={cardStyle}>
-            <p style={{ color: 'var(--color-muted-foreground)' }}>No session data available</p>
-          </div>
+          <EmptyState title="No session data available" />
         )}
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-2 gap-6">
-        {/* Scatter: Cost vs Messages */}
-        <div className="rounded-lg p-6" style={cardStyle}>
-          <h3 className="mb-4 text-lg">Cost vs Messages per Session</h3>
+        <Card title="Cost vs Messages per Session">
           <ResponsiveContainer width="100%" height={260}>
             <ScatterChart>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <XAxis
-                dataKey="messageCount" type="number" name="Messages"
+                dataKey="messageCount"
+                type="number"
+                name="Messages"
                 tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
               />
               <YAxis
-                dataKey="totalCost" type="number" name="Cost"
+                dataKey="totalCost"
+                type="number"
+                name="Cost"
                 tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
-                tickFormatter={(v) => `$${v.toFixed(0)}`}
+                tickFormatter={(v: number) => `$${v.toFixed(0)}`}
               />
               <ZAxis range={[30, 30]} />
               <Tooltip
@@ -129,9 +101,7 @@ function EfficiencyPage() {
                   name,
                 ]}
               />
-              {cliScatter.length > 0 && (
-                <Scatter name="CLI" data={cliScatter} fill="#c96442" />
-              )}
+              {cliScatter.length > 0 && <Scatter name="CLI" data={cliScatter} fill="#c96442" />}
               {vscodeScatter.length > 0 && (
                 <Scatter name="VS Code" data={vscodeScatter} fill="#d97757" />
               )}
@@ -141,84 +111,119 @@ function EfficiencyPage() {
               <Legend />
             </ScatterChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        {/* Weekly avg cost trend */}
-        <div className="rounded-lg p-6" style={cardStyle}>
-          <h3 className="mb-4 text-lg">Avg Cost per Session (Weekly)</h3>
+        <Card title="Avg Cost per Session (Weekly)">
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={data.weeklyAvgCost}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <XAxis
-                dataKey="week" tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
-                tickFormatter={(w) => w.slice(5)}
+                dataKey="week"
+                tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
+                tickFormatter={(w: string) => w.slice(5)}
               />
               <YAxis
                 tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
-                tickFormatter={(v) => `$${v.toFixed(0)}`}
+                tickFormatter={(v: number) => `$${v.toFixed(0)}`}
               />
               <Tooltip
                 contentStyle={tooltipStyle}
                 formatter={(value: number) => [formatCost(value), 'Avg Cost']}
               />
-              <Line type="monotone" dataKey="avgCost" stroke="#c96442" strokeWidth={2} dot={false} />
+              <Line
+                type="monotone"
+                dataKey="avgCost"
+                stroke="#c96442"
+                strokeWidth={2}
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       </div>
 
-      {/* Ranked sessions table */}
-      <div className="rounded-lg overflow-hidden" style={cardStyle}>
-        <h3 className="px-4 py-3 text-lg" style={{ borderBottom: '1px solid var(--color-border)' }}>
-          Most Expensive Sessions (per message)
-        </h3>
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <th className="px-4 py-3 text-left font-medium w-10" style={{ color: 'var(--color-muted-foreground)' }}>#</th>
-              <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Session</th>
-              <th className="px-4 py-3 text-left font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Project</th>
-              <th className="px-4 py-3 text-center font-medium w-10" style={{ color: 'var(--color-muted-foreground)' }}></th>
-              <th className="px-4 py-3 text-right font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Messages</th>
-              <th className="px-4 py-3 text-right font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Cost</th>
-              <th className="px-4 py-3 text-right font-medium" style={{ color: 'var(--color-muted-foreground)' }}>$/msg</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.rankedSessions.map((s, i) => (
-              <tr key={s.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <td className="px-4 py-3 tabular-nums" style={{ color: 'var(--color-muted-foreground)' }}>{i + 1}</td>
-                <td className="px-4 py-3">
-                  <a
-                    href={`/sessions/${s.id}`}
-                    className="font-medium truncate block max-w-[240px]"
-                    style={{ color: 'var(--color-foreground)' }}
-                  >
-                    {s.title || s.slug || s.id.slice(0, 8)}
-                  </a>
-                </td>
-                <td className="px-4 py-3 truncate max-w-[160px]" style={{ color: 'var(--color-muted-foreground)' }}>
+      <Card title="Most Expensive Sessions (per message)">
+        <DataTable
+          rowKey={(s) => s.id}
+          rows={data.rankedSessions.map((s, i) => ({ ...s, rank: i + 1 }))}
+          columns={[
+            {
+              key: 'rank',
+              header: '#',
+              cell: (s) => (
+                <span className="tabular-nums" style={{ color: 'var(--color-muted-foreground)' }}>
+                  {s.rank}
+                </span>
+              ),
+            },
+            {
+              key: 'title',
+              header: 'Session',
+              cell: (s) => (
+                <a
+                  href={`/sessions/${s.id}`}
+                  className="font-medium truncate block max-w-[240px] hover:underline"
+                  style={{ color: 'var(--color-foreground)' }}
+                >
+                  {s.title || s.slug || s.id.slice(0, 8)}
+                </a>
+              ),
+            },
+            {
+              key: 'project',
+              header: 'Project',
+              cell: (s) => (
+                <span
+                  className="truncate max-w-[160px] block"
+                  style={{ color: 'var(--color-muted-foreground)' }}
+                >
                   {s.projectName}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  {s.entrypoint === 'cli'
-                    ? <Terminal size={14} style={{ color: 'var(--color-muted-foreground)' }} />
-                    : <Code size={14} style={{ color: 'var(--color-muted-foreground)' }} />}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums" style={{ color: 'var(--color-muted-foreground)' }}>
-                  {s.messageCount}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums font-medium" style={{ color: 'var(--color-foreground)' }}>
-                  {formatCost(s.totalCost ?? 0)}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums font-medium" style={{ color: 'var(--color-primary)' }}>
+                </span>
+              ),
+            },
+            {
+              key: 'entry',
+              header: '',
+              align: 'center',
+              cell: (s) =>
+                s.entrypoint === 'cli' ? (
+                  <Terminal size={14} style={{ color: 'var(--color-muted-foreground)' }} />
+                ) : (
+                  <Code size={14} style={{ color: 'var(--color-muted-foreground)' }} />
+                ),
+            },
+            {
+              key: 'messages',
+              header: 'Messages',
+              align: 'right',
+              cell: (s) => (
+                <span style={{ color: 'var(--color-muted-foreground)' }}>{s.messageCount}</span>
+              ),
+            },
+            {
+              key: 'cost',
+              header: 'Cost',
+              align: 'right',
+              cell: (s) => (
+                <span className="font-medium tabular-nums">{formatCost(s.totalCost ?? 0)}</span>
+              ),
+            },
+            {
+              key: 'per',
+              header: '$/msg',
+              align: 'right',
+              cell: (s) => (
+                <span
+                  className="font-medium tabular-nums"
+                  style={{ color: 'var(--color-primary)' }}
+                >
                   {formatCost(s.costPerMessage)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </span>
+              ),
+            },
+          ]}
+        />
+      </Card>
     </div>
   )
 }
@@ -226,10 +231,16 @@ function EfficiencyPage() {
 function EntrypointCard({ label, icon, data }: {
   label: string
   icon: React.ReactNode
-  data: { sessionCount: number; totalCost: number; avgCost: number; totalTokens: number; avgMessages: number }
+  data: {
+    sessionCount: number
+    totalCost: number
+    avgCost: number
+    totalTokens: number
+    avgMessages: number
+  }
 }) {
   return (
-    <div className="rounded-lg p-6" style={cardStyle}>
+    <Card>
       <div className="flex items-center gap-2 mb-4">
         <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
         <h3 className="text-lg">{label}</h3>
@@ -238,10 +249,13 @@ function EntrypointCard({ label, icon, data }: {
         <Stat label="Sessions" value={String(data.sessionCount)} />
         <Stat label="Total Cost" value={formatCost(data.totalCost)} />
         <Stat label="Avg Cost/Session" value={formatCost(data.avgCost)} />
-        <Stat label="Avg Messages/Session" value={Math.round(data.avgMessages).toLocaleString()} />
+        <Stat
+          label="Avg Messages/Session"
+          value={Math.round(data.avgMessages).toLocaleString()}
+        />
         <Stat label="Total Tokens" value={formatTokens(data.totalTokens)} />
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -249,7 +263,12 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-      <p className="mt-0.5 text-lg font-medium tabular-nums" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+      <p
+        className="mt-0.5 text-lg font-medium tabular-nums"
+        style={{ color: 'var(--color-foreground)' }}
+      >
+        {value}
+      </p>
     </div>
   )
 }
