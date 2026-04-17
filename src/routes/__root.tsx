@@ -21,22 +21,41 @@ import {
   Clock,
   Gauge,
   FlaskConical,
+  Hammer,
+  AlertOctagon,
+  Tag as TagIcon,
+  Maximize2,
+  GitCompare,
+  CalendarRange,
+  Zap,
+  Webhook,
 } from 'lucide-react'
 import { useTheme } from '~/lib/theme'
 import { ThemeToggle } from '~/components/theme-toggle'
+import { CommandPalette } from '~/components/command-palette'
+import { ToastProvider } from '~/components/ui/toast'
+import { useAutoSync } from '~/hooks/useAutoSync'
 import '~/styles/globals.css'
 
 const navItems = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
   { to: '/daily', label: 'Daily Usage', icon: CalendarDays },
+  { to: '/calendar', label: 'Calendar', icon: CalendarRange },
+  { to: '/subscription', label: 'Subscription', icon: Zap },
   { to: '/forecast', label: 'Cost Forecast', icon: TrendingUp },
   { to: '/activity', label: 'Peak Hours', icon: Clock },
   { to: '/projects', label: 'Projects', icon: FolderOpen },
   { to: '/sessions', label: 'Sessions', icon: MessageSquare },
   { to: '/efficiency', label: 'Efficiency', icon: Gauge },
   { to: '/models', label: 'Models', icon: Cpu },
+  { to: '/tools', label: 'Tool Use', icon: Hammer },
+  { to: '/anomalies', label: 'Anomalies', icon: AlertOctagon },
   { to: '/what-if', label: 'What-If', icon: FlaskConical },
   { to: '/cache-analysis', label: 'Cache Analysis', icon: Database },
+  { to: '/context', label: 'Context Window', icon: Maximize2 },
+  { to: '/compare', label: 'Period Compare', icon: GitCompare },
+  { to: '/tags', label: 'Tags', icon: TagIcon },
+  { to: '/webhooks', label: 'Webhooks', icon: Webhook },
   { to: '/settings', label: 'Settings', icon: Settings },
 ] as const
 
@@ -68,17 +87,28 @@ function RootComponent() {
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        <div className="flex h-screen">
-          <Sidebar theme={theme} onToggleTheme={toggle} />
-          <main className="flex-1 overflow-y-auto p-8">
-            <div className="mx-auto max-w-[1200px]">
-              <Outlet />
-            </div>
-          </main>
-        </div>
+        <ToastProvider>
+          <AutoSyncDriver />
+          <CommandPalette />
+          <div className="flex h-screen">
+            <Sidebar theme={theme} onToggleTheme={toggle} />
+            <main className="flex-1 overflow-y-auto p-8">
+              <div className="mx-auto max-w-[1200px]">
+                <Outlet />
+              </div>
+            </main>
+          </div>
+        </ToastProvider>
       </QueryClientProvider>
     </RootDocument>
   )
+}
+
+function AutoSyncDriver() {
+  // Rendered inside QueryClientProvider so the hook can subscribe to the
+  // watcher query and fan out invalidations through the shared client.
+  useAutoSync()
+  return null
 }
 
 function Sidebar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onToggleTheme: () => void }) {
@@ -146,6 +176,32 @@ function Sidebar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onToggleTh
           })}
         </ul>
       </nav>
+
+      {/* Command palette hint — mirrors the CommandPalette global hotkey */}
+      <div className="px-6 pb-3 pt-1">
+        <kbd
+          className="flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] w-full"
+          style={{
+            backgroundColor: 'var(--color-background)',
+            color: 'var(--color-muted-foreground)',
+            border: '1px solid var(--color-border)',
+            fontFamily: 'inherit',
+          }}
+          title="Open command palette"
+        >
+          <span>Press</span>
+          <span
+            className="rounded px-1.5 py-0.5 font-medium"
+            style={{
+              backgroundColor: 'var(--color-secondary)',
+              color: 'var(--color-foreground)',
+            }}
+          >
+            ⌘K
+          </span>
+          <span>to search</span>
+        </kbd>
+      </div>
 
       {/* Footer */}
       <div

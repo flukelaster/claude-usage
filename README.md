@@ -5,7 +5,7 @@
 <h1 align="center">Claude Usage Dashboard</h1>
 
 <p align="center">
-  Local dashboard for visualizing token usage and estimated costs from <a href="https://claude.ai/code">Claude Code</a> session logs.
+  Local dashboard for visualizing token usage, estimated costs, subscription quotas, and tool patterns from <a href="https://claude.ai/code">Claude Code</a> session logs.
 </p>
 
 <p align="center">
@@ -15,178 +15,185 @@
   <img src="https://img.shields.io/badge/license-MIT-b0aea5" alt="MIT License" />
 </p>
 
-> **Note:** This dashboard reads local Claude Code logs from `~/.claude/projects/`. It does NOT access the Anthropic API — all data comes from your local filesystem. Costs shown are **estimated equivalent API costs**, not actual charges (especially relevant for Claude Max subscribers).
+> **Local-only.** The dashboard reads `~/.claude/projects/**/*.jsonl` from your machine — it never reaches out to the Anthropic API and never uploads anything. Costs are **estimated equivalent API costs** (useful even on a Claude Pro/Max subscription as a "what would this have cost on the pay-per-token plan?" gauge).
+
+---
+
+## Highlights
+
+**Cost & quota visibility**
+- 17 dashboard pages built around real Claude Code log data
+- Subscription tracking for Pay-per-token / Pro / Max 5× / Max 20× / custom plans, including 5-hour and weekly rolling windows
+- Burn-rate forecast — "at this pace you'll hit your cap in 2h 15m"
+- Cost forecast aligned to your actual billing cycle (configurable cycle start day)
+- Monthly budget with warning/exceeded thresholds
+
+**Workflow & analytics**
+- Per-tool analytics (Edit / Bash / Read / TodoWrite / …) with attributed cost
+- Cost-anomaly detection (z-score outlier sessions)
+- Period comparison (current 30d vs prior 30d, etc.)
+- Context-window utilization per turn, including a near-limit list
+- GitHub-style activity calendar with streak tracking
+- Tag system for grouping projects and sessions
+- ⌘K command palette for instant nav across pages, projects, sessions, and tags
+
+**Plumbing**
+- Auto-sync via chokidar + long-poll — UI updates within a second of a new turn
+- Outbound webhooks (Slack/Discord/anything HTTP) when budgets, subscription quotas, or anomalies cross thresholds
+- PDF / CSV / JSON export and full database backup/restore
+- 23 vitest unit tests; strict-mode TypeScript with zero errors
 
 ---
 
 ## Screenshots
 
-### Overview
+> Older screenshots in `docs/screenshots/` predate the recent feature additions; new ones are on the way.
 
-KPI cards, daily cost/token charts, top projects, and recent sessions at a glance.
-
-![Overview](docs/screenshots/overview.png)
-
-### Daily Usage
-
-Detailed daily breakdown with per-model badges, token columns, and totals — like running `ccusage daily` but in your browser.
-
-![Daily Usage](docs/screenshots/daily-usage.png)
-
-### Cost Forecast
-
-Current month spend, projected end-of-month cost, burn rate trend, and optional budget tracking with visual progress bar.
-
-![Cost Forecast](docs/screenshots/forecast.png)
-
-### Peak Hours
-
-GitHub-style activity heatmap (day-of-week x hour) showing when you use Claude the most. Toggle between message count and cost view.
-
-![Peak Hours](docs/screenshots/peak-hours.png)
-
-### Session Efficiency
-
-CLI vs VS Code comparison, scatter plot of cost vs messages, weekly cost trend, and sessions ranked by cost-per-message.
-
-![Efficiency](docs/screenshots/efficiency.png)
-
-### What-If Analysis
-
-"What if everything was Haiku?" — model cost simulator with side-by-side comparison, savings indicator, and full cross-model cost matrix.
-
-![What-If](docs/screenshots/what-if.png)
-
-### Projects & Sessions
-
-Per-project breakdown and per-session message timeline with token details.
-
-| Projects | Session Detail |
-|----------|---------------|
-| ![Projects](docs/screenshots/projects.png) | ![Session](docs/screenshots/session.png) |
-
-### Dark Mode
-
-Full dark theme following Anthropic's warm-toned design system.
-
-| Light | Dark |
-|-------|------|
-| ![Light](docs/screenshots/light-mode.png) | ![Dark](docs/screenshots/dark-mode.png) |
+| Page | What it shows |
+| --- | --- |
+| `/` Overview | KPI cards, daily cost trend, daily token mix, top projects, recent sessions |
+| `/daily` | One row per day: models used, input/output/cache breakdown, cost |
+| `/calendar` | Year-at-a-glance heatmap with current/longest streak |
+| `/subscription` | Pro/Max gauges, burn rate, when you'll hit the cap |
+| `/forecast` | Spent / projected / vs last month, daily chart with projection bars |
+| `/activity` | Day × hour heatmap of activity |
+| `/projects` and `/projects/$id` | Project list + per-project model/sessions/cost trend |
+| `/sessions` and `/sessions/$id` | Session list + message timeline + cumulative cost |
+| `/efficiency` | CLI vs VSCode comparison, cost-vs-messages scatter, cost/msg ranking |
+| `/models` | Per-model breakdown and daily cost-by-model trend |
+| `/tools` | Top tools by call count, attributed cost, daily volume |
+| `/anomalies` | Outlier sessions (cost > mean + 2σ) |
+| `/what-if` | "What if everything was Sonnet 4.6?" full pricing matrix |
+| `/cache-analysis` | Hit rate, savings vs overhead, ROI, per-model + per-project |
+| `/context` | Per-turn context fill against each model's max window |
+| `/compare` | Current N-day window vs prior N-day window, side-by-side |
+| `/tags` | Manage tag catalog, then attach to projects/sessions |
+| `/webhooks` | Add HTTP receivers + view delivery log |
+| `/settings` | Plan picker, budget, billing cycle, sidechain toggle, backup/restore |
 
 ---
 
-## Features
-
-- **Overview** — KPI cards, daily cost trend, token breakdown, top projects
-- **Daily Usage** — Day-by-day table with model badges and totals (like `ccusage daily`)
-- **Cost Forecast** — Projected monthly cost, burn rate trend, budget tracking
-- **Peak Hours** — Activity heatmap by hour and day of week
-- **Efficiency** — CLI vs VS Code comparison, cost-per-message ranking, scatter charts
-- **What-If** — Model cost simulator with full cross-model pricing matrix
-- **Projects** — Per-project breakdown with cost, sessions, model usage
-- **Sessions** — Session list with drill-down to per-message timeline
-- **Models** — Compare usage across Opus, Sonnet, Haiku with daily trend
-- **Cache Analysis** — Cache hit rate, savings/overhead, per-project efficiency
-- **Dark Mode** — Toggle between light and dark themes
-- **PDF Export** — Download reports as PDF
-- **Period Filter** — Switch between 30 days, 90 days, or all time
-
----
-
-## Quick Start
+## Quick start
 
 ```bash
-# Clone
-git clone https://github.com/flukelaster/claude-usage.git
-cd claude-usage
-
-# Install dependencies
+# 1. Install — pnpm 10+, Node 20+
 pnpm install
 
-# Sync Claude Code logs into local SQLite cache
+# 2. Pull existing logs into the local SQLite cache
 pnpm sync
 
-# Start dev server
-pnpm dev
+# 3. Run the dashboard
+pnpm dev    # http://localhost:3000
 ```
 
-Open **http://localhost:3000** and click **Sync Now** to import your latest logs.
+The dashboard auto-syncs as new log lines arrive (a chokidar watcher streams change events to the client via long poll). You only need to re-run `pnpm sync` if you wipe `data/cache.db`.
 
-### Requirements
+### Other scripts
 
-- **Node.js** 20+
-- **pnpm** 9+
-- **Claude Code** installed and used (generates logs at `~/.claude/projects/`)
-
-### Platform Support
-
-Works on **macOS**, **Linux**, and **Windows**.
-
-On Windows, `better-sqlite3` requires native build tools. If `pnpm install` fails:
-
-```powershell
-npm install -g windows-build-tools
-# or install "Desktop development with C++" workload via Visual Studio Installer
+```bash
+pnpm build          # Production bundle
+pnpm start          # Run the production server (after build)
+pnpm test           # Vitest run (23 tests)
+pnpm test:watch     # Vitest watch
+pnpm exec tsc --noEmit --ignoreDeprecations 6.0   # Type check
+pnpm db:generate    # drizzle-kit generate (only needed on schema changes)
 ```
 
 ---
 
-## How It Works
+## Architecture
 
 ```
-~/.claude/projects/**/*.jsonl  →  Stream Parser  →  SQLite Cache  →  Dashboard
+~/.claude/projects/**/*.jsonl
+        ↓ (chokidar watcher)
+   reader.ts (byte-level CRLF-safe stream)
+        ↓
+   parser.ts (Zod-validated, extracts messages + tool_uses)
+        ↓
+   SQLite (better-sqlite3 + Drizzle ORM, data/cache.db)
+        ↓
+   ~13 server-function endpoints (TanStack Start RPC)
+        ↓
+   17 React routes + cmd+K palette + auto-sync
+        ↓
+   Outbound: PDF / CSV / JSON / DB dump / webhooks
 ```
 
-1. **Parser** reads `.jsonl` session files from `~/.claude/projects/`
-2. Extracts token usage from `assistant` entries (input, output, cache write, cache read)
-3. Calculates estimated costs using [Anthropic's published pricing](https://docs.anthropic.com/en/docs/about-claude/pricing)
-4. Stores parsed data in a local SQLite database (`data/cache.db`, gitignored)
-5. Dashboard queries SQLite via TanStack Start server functions
-6. **Incremental sync** — only parses new data since last sync (tracks byte offsets)
+### Layout
+
+```
+src/
+├── lib/                pricing, format helpers, subscription plans, theme
+├── types/              shared response types (re-export of server return shapes)
+├── hooks/              one TanStack Query hook per server function
+├── components/         ui/ primitives + cards/ + charts/ + tables/ + feature widgets
+├── routes/             file-based TanStack Router pages
+├── server/
+│   ├── claude-logs/    paths discovery, byte-stream reader, parser, chokidar watcher
+│   ├── db/             Drizzle schema, client, app-settings KV, query filters
+│   ├── functions/      one file per RPC endpoint (~25)
+│   ├── pdf/            PDFKit report builder (dynamic-imported)
+│   ├── export/         CSV encoder (RFC-4180)
+│   └── webhooks/       event catalogue, dispatcher, post-sync triggers
+├── tests/              vitest fixtures + tests for parser/reader/pricing/billing
+└── styles/             Tailwind v4 + warm parchment design tokens
+```
+
+### Database
+
+| Table | Purpose |
+| --- | --- |
+| `projects` | One row per `~/.claude/projects/*` folder |
+| `sessions` | One per `.jsonl` plus orphan rows for inlined subagent sessions |
+| `messages` | Token counts, cost, stop reason, isSidechain |
+| `tool_uses` | Per-tool-call row joined to a parent message |
+| `tags`, `entity_tags` | User labels attached to projects/sessions |
+| `webhooks`, `webhook_deliveries`, `webhook_state` | Outbound HTTP notifications + their per-event watermarks |
+| `sync_state` | KV store: `lastSyncAt`, `setting:*` (budget, plan, cycle, sidechain) |
+
+A versioned JSON dump of every table is exposed via `/settings → Backup` for moving between machines.
 
 ---
 
-## Supported Models & Pricing
+## Subscription & pricing notes
 
-| Model | Input | Output | Cache Write (5m) | Cache Write (1h) | Cache Read |
-|---|---|---|---|---|---|
-| Opus 4.6 | $5/MTok | $25/MTok | $6.25/MTok | $10/MTok | $0.50/MTok |
-| Opus 4.5 | $5/MTok | $25/MTok | $6.25/MTok | $10/MTok | $0.50/MTok |
-| Sonnet 4.6 | $3/MTok | $15/MTok | $3.75/MTok | $6/MTok | $0.30/MTok |
-| Sonnet 4 | $3/MTok | $15/MTok | $3.75/MTok | $6/MTok | $0.30/MTok |
-| Haiku 4.5 | $1/MTok | $5/MTok | $1.25/MTok | $2/MTok | $0.10/MTok |
+The `claude-opus-4-7` model and Pro/Max plan limits are best-effort estimates derived from public Anthropic guidance. To refresh:
 
-Pricing verified 2026-04-14. Dashboard warns if pricing data is >90 days old.
+1. Update `src/lib/pricing.ts` — `MODEL_FAMILY`, `PRICING`, `MODEL_CONTEXT_WINDOW` and bump `PRICING_LAST_VERIFIED`.
+2. Update `src/lib/subscription.ts` — `SUBSCRIPTION_PLANS` 5-hour and weekly token caps.
+
+Unknown models trigger a banner on `/settings` and the overview page so you know when the table is stale.
 
 ---
 
-## Tech Stack
+## Webhook payloads
 
-- [TanStack Start](https://tanstack.com/start) — Vite + SSR + Server Functions
-- [TanStack Router](https://tanstack.com/router) — File-based routing
-- [TanStack Query](https://tanstack.com/query) — Data fetching + caching
-- [Recharts](https://recharts.org/) — Charts
-- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) + [Drizzle ORM](https://orm.drizzle.team/) — Database
-- [Tailwind CSS v4](https://tailwindcss.com/) — Styling
-- [Lucide React](https://lucide.dev/) — Icons
+POST body (`application/json`):
 
-## Scripts
+```json
+{
+  "event": "subscription.warning",
+  "emittedAt": "2026-04-16T22:14:00.123Z",
+  "data": {
+    "plan": "max5",
+    "window": "subscription:5h",
+    "label": "Last 5 hours",
+    "windowHours": 5,
+    "inputTokens": 800000,
+    "outputTokens": 1900000,
+    "utilizationPercent": 0.84,
+    "capReachedAt": "2026-04-16T23:01:00.000Z"
+  }
+}
+```
 
-| Command | Description |
-|---|---|
-| `pnpm dev` | Start dev server with hot reload |
-| `pnpm build` | Build for production |
-| `pnpm start` | Start production server |
-| `pnpm sync` | Sync Claude Code logs (CLI, no server needed) |
+If the webhook has a signing secret the request includes:
+- `X-Claude-Usage-Event: subscription.warning`
+- `X-Claude-Usage-Signature: sha256=<hmac of body>`
+
+Watermarks make events fire only on transitions (`ok → warning`, `warning → exceeded`), not on every sync while the level is unchanged. The `sync.completed` event ignores the watermark and fires on every sync — leave it off unless you really want that volume.
 
 ---
-
-## Privacy
-
-- **No message content** is stored — only token counts and metadata
-- All data stays on your local machine
-- The SQLite cache (`data/cache.db`) is gitignored
-- No network requests except to `localhost`
 
 ## License
 

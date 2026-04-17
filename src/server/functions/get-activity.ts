@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getDb } from '~/server/db/client'
 import { messages, sessions } from '~/server/db/schema'
 import { sql, eq, and, gte } from 'drizzle-orm'
+import { buildSidechainFilter } from '~/server/db/query-filters'
 
 export const getActivityAll = createServerFn({ method: 'GET' })
   .handler(async () => queryActivity(null))
@@ -19,40 +20,40 @@ function queryActivity(days: number | null) {
     : null
   const timeFilter = cutoff ? gte(messages.timestamp, cutoff) : sql`1=1`
   const sessionTimeFilter = cutoff ? gte(sessions.startedAt, cutoff) : sql`1=1`
-  const sidechainFilter = eq(messages.isSidechain, false)
+  const sidechainFilter = buildSidechainFilter()
 
   // Heatmap: day of week × hour
   const heatmapData = db.select({
-    dayOfWeek: sql<number>`cast(strftime('%w', ${messages.timestamp}) as integer)`,
-    hour: sql<number>`cast(strftime('%H', ${messages.timestamp}) as integer)`,
+    dayOfWeek: sql<number>`cast(strftime('%w', ${messages.timestamp}, 'localtime') as integer)`,
+    hour: sql<number>`cast(strftime('%H', ${messages.timestamp}, 'localtime') as integer)`,
     messageCount: sql<number>`count(*)`,
     cost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
   })
     .from(messages)
     .where(and(timeFilter, sidechainFilter))
-    .groupBy(sql`strftime('%w', ${messages.timestamp})`, sql`strftime('%H', ${messages.timestamp})`)
+    .groupBy(sql`strftime('%w', ${messages.timestamp}, 'localtime')`, sql`strftime('%H', ${messages.timestamp}, 'localtime')`)
     .all()
 
   // Busiest hour
   const busiestHourRow = db.select({
-    hour: sql<number>`cast(strftime('%H', ${messages.timestamp}) as integer)`,
+    hour: sql<number>`cast(strftime('%H', ${messages.timestamp}, 'localtime') as integer)`,
     count: sql<number>`count(*)`,
   })
     .from(messages)
     .where(and(timeFilter, sidechainFilter))
-    .groupBy(sql`strftime('%H', ${messages.timestamp})`)
+    .groupBy(sql`strftime('%H', ${messages.timestamp}, 'localtime')`)
     .orderBy(sql`count(*) desc`)
     .limit(1)
     .get()
 
   // Busiest day of week
   const busiestDayRow = db.select({
-    dayOfWeek: sql<number>`cast(strftime('%w', ${messages.timestamp}) as integer)`,
+    dayOfWeek: sql<number>`cast(strftime('%w', ${messages.timestamp}, 'localtime') as integer)`,
     count: sql<number>`count(*)`,
   })
     .from(messages)
     .where(and(timeFilter, sidechainFilter))
-    .groupBy(sql`strftime('%w', ${messages.timestamp})`)
+    .groupBy(sql`strftime('%w', ${messages.timestamp}, 'localtime')`)
     .orderBy(sql`count(*) desc`)
     .limit(1)
     .get()

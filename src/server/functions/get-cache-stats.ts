@@ -3,6 +3,7 @@ import { getDb } from '~/server/db/client'
 import { messages, sessions, projects } from '~/server/db/schema'
 import { sql, eq, and, gte, desc } from 'drizzle-orm'
 import { getModelPricing, getModelFamily } from '~/lib/pricing'
+import { buildSidechainFilter } from '~/server/db/query-filters'
 
 export const getCacheStatsAll = createServerFn({ method: 'GET' })
   .handler(async () => queryCacheStats(null))
@@ -19,6 +20,7 @@ function queryCacheStats(days: number | null) {
     ? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
     : null
   const timeFilter = cutoff ? gte(messages.timestamp, cutoff) : sql`1=1`
+  const sidechainFilter = buildSidechainFilter()
 
   const rawStats = db.select({
     model: messages.model,
@@ -30,7 +32,7 @@ function queryCacheStats(days: number | null) {
     totalCost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
   })
     .from(messages)
-    .where(and(timeFilter, eq(messages.isSidechain, false)))
+    .where(and(timeFilter, sidechainFilter))
     .groupBy(messages.model)
     .all()
 
@@ -66,15 +68,15 @@ function queryCacheStats(days: number | null) {
   const overallCost = modelCacheStats.reduce((acc, s) => acc + s.totalCost, 0)
 
   const dailyCacheTrend = db.select({
-    date: sql<string>`date(${messages.timestamp})`.as('date'),
+    date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
     cacheReadTokens: sql<number>`coalesce(sum(${messages.cacheReadTokens}), 0)`,
     cacheCreationTokens: sql<number>`coalesce(sum(${messages.cacheCreationTokens}), 0)`,
     inputTokens: sql<number>`coalesce(sum(${messages.inputTokens}), 0)`,
   })
     .from(messages)
-    .where(and(timeFilter, eq(messages.isSidechain, false)))
-    .groupBy(sql`date(${messages.timestamp})`)
-    .orderBy(sql`date(${messages.timestamp})`)
+    .where(and(timeFilter, sidechainFilter))
+    .groupBy(sql`date(${messages.timestamp}, 'localtime')`)
+    .orderBy(sql`date(${messages.timestamp}, 'localtime')`)
     .all()
 
   const projectCache = db.select({
@@ -88,7 +90,7 @@ function queryCacheStats(days: number | null) {
     .from(messages)
     .innerJoin(sessions, eq(messages.sessionId, sessions.id))
     .innerJoin(projects, eq(sessions.projectId, projects.id))
-    .where(and(timeFilter, eq(messages.isSidechain, false)))
+    .where(and(timeFilter, sidechainFilter))
     .groupBy(sessions.projectId)
     .orderBy(desc(sql`sum(${messages.cacheReadTokens})`))
     .all()

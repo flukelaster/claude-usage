@@ -13,6 +13,8 @@ export interface ModelPricing {
 
 // Map raw model strings to pricing family
 const MODEL_FAMILY: Record<string, string> = {
+  'claude-opus-4-7': 'opus-4.7',
+  'claude-opus-4-7-20260101': 'opus-4.7',
   'claude-opus-4-6': 'opus-4.6',
   'claude-opus-4-5': 'opus-4.5',
   'claude-opus-4-5-20251101': 'opus-4.5',
@@ -27,7 +29,33 @@ const MODEL_FAMILY: Record<string, string> = {
   'claude-haiku-4-5': 'haiku-4.5',
 }
 
+/**
+ * Maximum context window per family, in tokens. Used by the context
+ * utilization analytics to normalize input-token totals into a % fill.
+ * Values reflect the current max window each model accepts on the
+ * platform (verified alongside PRICING_LAST_VERIFIED).
+ */
+export const MODEL_CONTEXT_WINDOW: Record<string, number> = {
+  'opus-4.7': 1_000_000,
+  'opus-4.6': 200_000,
+  'opus-4.5': 200_000,
+  'opus-4.1': 200_000,
+  'opus-4': 200_000,
+  'sonnet-4.6': 1_000_000,
+  'sonnet-4.5': 200_000,
+  'sonnet-4': 200_000,
+  'haiku-4.5': 200_000,
+}
+
+export function getModelContextWindow(model: string): number {
+  const family = getModelFamily(model)
+  return MODEL_CONTEXT_WINDOW[family] ?? 200_000
+}
+
 export const PRICING: Record<string, ModelPricing> = {
+  // Opus 4.7 matches 4.6's rate card as of the "knowledge cutoff + first
+  // platform release" window; update once the published rate card moves.
+  'opus-4.7':   { input:  5.00, output: 25.00, cacheWrite5m:  6.25, cacheWrite1h: 10.00, cacheRead: 0.50 },
   'opus-4.6':   { input:  5.00, output: 25.00, cacheWrite5m:  6.25, cacheWrite1h: 10.00, cacheRead: 0.50 },
   'opus-4.5':   { input:  5.00, output: 25.00, cacheWrite5m:  6.25, cacheWrite1h: 10.00, cacheRead: 0.50 },
   'opus-4.1':   { input: 15.00, output: 75.00, cacheWrite5m: 18.75, cacheWrite1h: 30.00, cacheRead: 1.50 },
@@ -47,6 +75,15 @@ export function getModelFamily(model: string): string {
   return MODEL_FAMILY[model] ?? FALLBACK_FAMILY
 }
 
+/**
+ * True if the model appears in the hard-coded pricing table. Callers can
+ * surface a warning for unknown models so the operator knows to update
+ * `PRICING` before trusting the cost estimate.
+ */
+export function isKnownModel(model: string): boolean {
+  return Object.prototype.hasOwnProperty.call(MODEL_FAMILY, model)
+}
+
 export function getModelPricing(model: string): ModelPricing {
   const family = getModelFamily(model)
   return PRICING[family] ?? PRICING[FALLBACK_FAMILY]
@@ -55,6 +92,7 @@ export function getModelPricing(model: string): ModelPricing {
 export function getModelDisplayName(model: string): string {
   const family = getModelFamily(model)
   const names: Record<string, string> = {
+    'opus-4.7': 'Opus 4.7',
     'opus-4.6': 'Opus 4.6',
     'opus-4.5': 'Opus 4.5',
     'opus-4.1': 'Opus 4.1',
@@ -85,17 +123,25 @@ export function calcCost(model: string, usage: TokenUsage): number {
   const p = getModelPricing(model)
 
   const totalCacheWrite = usage.cacheCreationTokens
+  const ephemeralTotal = usage.cacheEphemeral5mTokens + usage.cacheEphemeral1hTokens
   let cacheWriteCost: number
 
-  if (totalCacheWrite > 0 && (usage.cacheEphemeral5mTokens > 0 || usage.cacheEphemeral1hTokens > 0)) {
-    // Use the breakdown for accurate pricing
-    cacheWriteCost = (
-      usage.cacheEphemeral5mTokens * p.cacheWrite5m +
-      usage.cacheEphemeral1hTokens * p.cacheWrite1h
-    ) / 1_000_000
+  if (totalCacheWrite === 0) {
+    cacheWriteCost = 0
+  } else if (ephemeralTotal > 0) {
+    // Use the explicit breakdown for accurate pricing. If the breakdown covers
+    // only part of the total (e.g. one field missing), split the remainder
+    // using the observed ratio.
+    const remainder = Math.max(0, totalCacheWrite - ephemeralTotal)
+    const p5mShare = usage.cacheEphemeral5mTokens / ephemeralTotal
+    const attributed5m = usage.cacheEphemeral5mTokens + remainder * p5mShare
+    const attributed1h = usage.cacheEphemeral1hTokens + remainder * (1 - p5mShare)
+    cacheWriteCost = (attributed5m * p.cacheWrite5m + attributed1h * p.cacheWrite1h) / 1_000_000
   } else {
-    // Fallback: assume 1h cache write (conservative estimate)
-    cacheWriteCost = totalCacheWrite * p.cacheWrite1h / 1_000_000
+    // Breakdown missing entirely. 5-minute cache is the SDK default, so
+    // weight toward it rather than assuming the pricier 1h tier.
+    const blendRate = p.cacheWrite5m * 0.75 + p.cacheWrite1h * 0.25
+    cacheWriteCost = totalCacheWrite * blendRate / 1_000_000
   }
 
   return (

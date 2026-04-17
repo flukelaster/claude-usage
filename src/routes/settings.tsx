@@ -1,34 +1,57 @@
+import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { syncLogs, getLastSyncTime } from '~/server/functions/sync-logs'
-import { PRICING, PRICING_LAST_VERIFIED, getModelDisplayName } from '~/lib/pricing'
+import { PRICING, PRICING_LAST_VERIFIED } from '~/lib/pricing'
 import { formatRelativeTime } from '~/lib/format'
-import { RefreshCw, AlertTriangle, FolderOpen, Database } from 'lucide-react'
-import { homedir } from '~/server/functions/get-settings'
+import { RefreshCw, AlertTriangle, FolderOpen, Database, DollarSign, Calendar, Download, Upload, Zap } from 'lucide-react'
+import {
+  useAppSettings,
+  useSetMonthlyBudget,
+  useSetBillingCycleStartDay,
+} from '~/hooks/useAppSettings'
+import { useLastSync, useSyncLogs } from '~/hooks/useSync'
+import { useHomedir } from '~/hooks/useSettings'
+import { useExportDatabase, useImportDatabase } from '~/hooks/useBackup'
+import { useSubscription, useSetSubscriptionPlan } from '~/hooks/useSubscription'
+import { SUBSCRIPTION_PLANS, PLAN_IDS } from '~/lib/subscription'
+import { SidechainToggle } from '~/components/sidechain-toggle'
+import { UnknownModelBanner } from '~/components/unknown-model-banner'
+import type { DatabaseDump } from '~/server/functions/db-backup'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
 })
 
 function SettingsPage() {
-  const queryClient = useQueryClient()
+  const { data: lastSync } = useLastSync()
+  const { data: homeDir } = useHomedir()
+  const { data: settings } = useAppSettings()
+  const syncMutation = useSyncLogs()
+  const setBudget = useSetMonthlyBudget()
+  const setCycleDay = useSetBillingCycleStartDay()
 
-  const { data: lastSync } = useQuery({
-    queryKey: ['lastSync'],
-    queryFn: () => getLastSyncTime(),
-  })
+  const [budgetDraft, setBudgetDraft] = useState<string>('')
+  const [cycleDraft, setCycleDraft] = useState<string>('')
 
-  const { data: homeDir } = useQuery({
-    queryKey: ['homeDir'],
-    queryFn: () => homedir(),
-  })
+  const exportDb = useExportDatabase()
+  const importDb = useImportDatabase()
+  const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge')
 
-  const syncMutation = useMutation({
-    mutationFn: () => syncLogs(),
-    onSuccess: () => {
-      queryClient.invalidateQueries()
-    },
-  })
+  const { data: subscription } = useSubscription()
+  const setPlan = useSetSubscriptionPlan()
+  const activePlanId = subscription?.plan.id ?? 'none'
+
+  const currentBudget = settings?.monthlyBudgetUsd ?? null
+  const currentCycle = settings?.billingCycleStartDay ?? 1
+
+  async function onImportFile(file: File) {
+    try {
+      const text = await file.text()
+      const dump = JSON.parse(text) as DatabaseDump
+      importDb.mutate({ dump, mode: importMode })
+    } catch (err) {
+      alert(`Failed to read backup: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   // Check if pricing is stale (>90 days)
   const lastVerified = new Date(PRICING_LAST_VERIFIED)
@@ -42,6 +65,284 @@ function SettingsPage() {
         <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
           Dashboard configuration
         </p>
+      </div>
+
+      <UnknownModelBanner />
+
+      {/* Analytics preferences */}
+      <div className="rounded-lg p-6" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+        <h3 className="text-lg mb-4">Analytics Preferences</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Include sidechain messages</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+                Count subagent turns in cost and token analytics.
+              </p>
+            </div>
+            <SidechainToggle />
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div>
+              <div className="flex items-center gap-2">
+                <DollarSign size={14} style={{ color: 'var(--color-muted-foreground)' }} />
+                <p className="text-sm font-medium">Monthly budget (USD)</p>
+              </div>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+                Leave blank to disable the budget banner. Currently{' '}
+                {currentBudget !== null ? `$${currentBudget.toFixed(2)}` : 'not set'}.
+              </p>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const n = Number(budgetDraft)
+                setBudget.mutate(Number.isFinite(n) && n > 0 ? n : null)
+                setBudgetDraft('')
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={budgetDraft}
+                placeholder={currentBudget !== null ? String(currentBudget) : '100'}
+                onChange={(e) => setBudgetDraft(e.target.value)}
+                className="w-28 rounded-md px-2 py-1.5 text-sm"
+                style={{
+                  backgroundColor: 'var(--color-background)',
+                  border: '1px solid var(--color-border)',
+                }}
+              />
+              <button
+                type="submit"
+                disabled={setBudget.isPending}
+                className="rounded-md px-3 py-1.5 text-sm"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  color: 'var(--color-primary-foreground)',
+                }}
+              >
+                Save
+              </button>
+            </form>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div>
+              <div className="flex items-center gap-2">
+                <Calendar size={14} style={{ color: 'var(--color-muted-foreground)' }} />
+                <p className="text-sm font-medium">Billing cycle start day</p>
+              </div>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+                Day of month the billing period resets (1–28). Currently day {currentCycle}.
+              </p>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const n = Number(cycleDraft)
+                if (Number.isFinite(n)) setCycleDay.mutate(n)
+                setCycleDraft('')
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="number"
+                min={1}
+                max={28}
+                value={cycleDraft}
+                placeholder={String(currentCycle)}
+                onChange={(e) => setCycleDraft(e.target.value)}
+                className="w-20 rounded-md px-2 py-1.5 text-sm"
+                style={{
+                  backgroundColor: 'var(--color-background)',
+                  border: '1px solid var(--color-border)',
+                }}
+              />
+              <button
+                type="submit"
+                disabled={setCycleDay.isPending}
+                className="rounded-md px-3 py-1.5 text-sm"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  color: 'var(--color-primary-foreground)',
+                }}
+              >
+                Save
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      {/* Subscription plan */}
+      <div
+        className="rounded-lg p-6"
+        style={{
+          backgroundColor: 'var(--color-card)',
+          border: '1px solid var(--color-border)',
+        }}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Zap size={18} style={{ color: 'var(--color-primary)' }} />
+          <h3 className="text-lg">Subscription Plan</h3>
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--color-muted-foreground)' }}>
+          Pick the Claude plan you use so the dashboard can track rolling
+          usage against its quota. The{' '}
+          <a
+            href="/subscription"
+            className="underline"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            subscription page
+          </a>{' '}
+          has the detailed gauges and the custom-plan editor.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {PLAN_IDS.map((id) => {
+            const plan = SUBSCRIPTION_PLANS[id]
+            const active = id === activePlanId
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setPlan.mutate({ planId: id })}
+                disabled={setPlan.isPending}
+                className="rounded-md px-3 py-1.5 text-sm"
+                style={{
+                  backgroundColor: active
+                    ? 'var(--color-primary)'
+                    : 'var(--color-secondary)',
+                  color: active
+                    ? 'var(--color-primary-foreground)'
+                    : 'var(--color-foreground)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                {plan.name}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Backup & Restore */}
+      <div
+        className="rounded-lg p-6"
+        style={{
+          backgroundColor: 'var(--color-card)',
+          border: '1px solid var(--color-border)',
+        }}
+      >
+        <h3 className="text-lg mb-1">Backup &amp; Restore</h3>
+        <p className="text-xs mb-4" style={{ color: 'var(--color-muted-foreground)' }}>
+          Export the full database (projects, sessions, messages, tags) as a
+          JSON file, or import one from another machine.
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => exportDb.mutate()}
+            disabled={exportDb.isPending}
+            className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm"
+            style={{
+              backgroundColor: 'var(--color-secondary)',
+              color: 'var(--color-secondary-foreground)',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            <Download size={14} />
+            {exportDb.isPending ? 'Exporting…' : 'Export database'}
+          </button>
+
+          <label
+            className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm cursor-pointer"
+            style={{
+              backgroundColor: 'var(--color-primary)',
+              color: 'var(--color-primary-foreground)',
+            }}
+          >
+            <Upload size={14} />
+            {importDb.isPending ? 'Importing…' : 'Import database'}
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) onImportFile(f)
+                e.target.value = ''
+              }}
+            />
+          </label>
+
+          <div
+            className="flex rounded-md p-0.5 text-xs"
+            style={{ backgroundColor: 'var(--color-secondary)' }}
+          >
+            {(['merge', 'replace'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setImportMode(m)}
+                className="rounded-sm px-2 py-1 capitalize"
+                style={{
+                  backgroundColor:
+                    importMode === m ? 'var(--color-card)' : 'transparent',
+                  color:
+                    importMode === m
+                      ? 'var(--color-foreground)'
+                      : 'var(--color-muted-foreground)',
+                  boxShadow:
+                    importMode === m
+                      ? '0px 0px 0px 1px var(--color-border)'
+                      : 'none',
+                }}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <p className="mt-3 text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>
+          <strong>Merge</strong> keeps existing rows and only adds new ones
+          (deduped by primary key). <strong>Replace</strong> wipes everything
+          first — destructive, use for restoring a clean backup.
+        </p>
+
+        {importDb.data && (
+          <div
+            className="mt-3 rounded-md p-3 text-xs"
+            style={{ backgroundColor: 'var(--color-background)' }}
+          >
+            <p className="font-medium">Import complete</p>
+            <ul className="mt-1 space-y-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
+              {Object.entries(importDb.data.inserted).map(([k, v]) => (
+                <li key={k}>
+                  {k}: +{v.toLocaleString()} inserted ·{' '}
+                  {importDb.data!.skipped[k]?.toLocaleString() ?? 0} skipped
+                </li>
+              ))}
+            </ul>
+            {importDb.data.errors.length > 0 && (
+              <p className="mt-2" style={{ color: 'var(--color-danger)' }}>
+                {importDb.data.errors.length} rows errored. First: {importDb.data.errors[0]}
+              </p>
+            )}
+          </div>
+        )}
+
+        {importDb.isError && (
+          <p className="mt-3 text-xs" style={{ color: 'var(--color-danger)' }}>
+            Import failed: {importDb.error?.message}
+          </p>
+        )}
       </div>
 
       {/* Log Path */}

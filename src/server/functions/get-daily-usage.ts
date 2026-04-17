@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getDb } from '~/server/db/client'
 import { messages } from '~/server/db/schema'
 import { sql, eq, and, gte } from 'drizzle-orm'
+import { buildSidechainFilter } from '~/server/db/query-filters'
 
 export const getDailyUsageAll = createServerFn({ method: 'GET' })
   .handler(async () => queryDailyUsage(null))
@@ -18,10 +19,10 @@ function queryDailyUsage(days: number | null) {
     ? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
     : null
   const timeFilter = cutoff ? gte(messages.timestamp, cutoff) : sql`1=1`
-  const sidechainFilter = eq(messages.isSidechain, false)
+  const sidechainFilter = buildSidechainFilter()
 
   const daily = db.select({
-    date: sql<string>`date(${messages.timestamp})`.as('date'),
+    date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
     inputTokens: sql<number>`coalesce(sum(${messages.inputTokens}), 0)`,
     outputTokens: sql<number>`coalesce(sum(${messages.outputTokens}), 0)`,
     cacheCreationTokens: sql<number>`coalesce(sum(${messages.cacheCreationTokens}), 0)`,
@@ -31,20 +32,20 @@ function queryDailyUsage(days: number | null) {
   })
     .from(messages)
     .where(and(timeFilter, sidechainFilter))
-    .groupBy(sql`date(${messages.timestamp})`)
-    .orderBy(sql`date(${messages.timestamp}) desc`)
+    .groupBy(sql`date(${messages.timestamp}, 'localtime')`)
+    .orderBy(sql`date(${messages.timestamp}, 'localtime') desc`)
     .all()
 
   // Models used per day
   const dailyModels = db.select({
-    date: sql<string>`date(${messages.timestamp})`.as('date'),
+    date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
     model: messages.model,
     cost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
   })
     .from(messages)
     .where(and(timeFilter, sidechainFilter))
-    .groupBy(sql`date(${messages.timestamp})`, messages.model)
-    .orderBy(sql`date(${messages.timestamp}) desc`, sql`sum(${messages.estimatedCostUsd}) desc`)
+    .groupBy(sql`date(${messages.timestamp}, 'localtime')`, messages.model)
+    .orderBy(sql`date(${messages.timestamp}, 'localtime') desc`, sql`sum(${messages.estimatedCostUsd}) desc`)
     .all()
 
   // Group models by date

@@ -69,16 +69,32 @@ export function extractCwdFromSession(projectPath: string): string | null {
 /**
  * Smart decode folder name by checking which path actually exists on the filesystem.
  * e.g. "-Users-flukelaster-Desktop-Front-End-POC" -> find the real path
+ *
+ * On Windows, encoded names typically start with `-C-Users-...` where the
+ * first single-letter segment is the drive letter. Any other first segment
+ * (e.g. a project prefix) is not a drive and must stay part of the path.
  */
 function smartDecodeFolderName(folderName: string): string | null {
   if (!folderName.startsWith('-')) return null
 
-  // The folder name uses - as separator, but actual paths may contain -
-  // Strategy: build path from left, checking which segments exist as directories
-  const parts = folderName.slice(1).split('-') // remove leading -
-  // On Windows, folder names start with e.g. -C-Users-... so root is drive letter
   const isWindows = platform() === 'win32'
-  let currentPath = isWindows ? `${parts.shift()}:\\` : '/'
+  let remaining = folderName.slice(1) // strip leading "-"
+  let currentPath: string
+
+  if (isWindows) {
+    const driveMatch = remaining.match(/^([A-Za-z])(?:-(.*))?$/)
+    if (driveMatch) {
+      currentPath = `${driveMatch[1].toUpperCase()}:\\`
+      remaining = driveMatch[2] ?? ''
+    } else {
+      // No detectable drive letter — fall back to current drive root.
+      currentPath = '\\'
+    }
+  } else {
+    currentPath = '/'
+  }
+
+  const parts = remaining ? remaining.split('-') : []
   let i = 0
 
   while (i < parts.length) {

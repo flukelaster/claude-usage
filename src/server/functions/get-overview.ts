@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getDb } from '~/server/db/client'
 import { messages, sessions, projects } from '~/server/db/schema'
 import { sql, eq, and, gte, desc } from 'drizzle-orm'
+import { buildSidechainFilter } from '~/server/db/query-filters'
 
 export const getOverviewAll = createServerFn({ method: 'GET' })
   .handler(async () => queryOverview(null))
@@ -14,7 +15,7 @@ export const getOverview90d = createServerFn({ method: 'GET' })
 
 function queryOverview(days: number | null) {
   const db = getDb()
-  const sidechainFilter = eq(messages.isSidechain, false)
+  const sidechainFilter = buildSidechainFilter()
 
   // null = all time, otherwise last N days
   const cutoff = days
@@ -55,7 +56,7 @@ function queryOverview(days: number | null) {
   const cacheHitRate = totalInput > 0 ? (kpi?.totalCacheReadTokens ?? 0) / totalInput : 0
 
   const dailyCost = db.select({
-    date: sql<string>`date(${messages.timestamp})`.as('date'),
+    date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
     cost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
     inputTokens: sql<number>`coalesce(sum(${messages.inputTokens}), 0)`,
     outputTokens: sql<number>`coalesce(sum(${messages.outputTokens}), 0)`,
@@ -64,8 +65,8 @@ function queryOverview(days: number | null) {
   })
     .from(messages)
     .where(and(timeFilter, sidechainFilter))
-    .groupBy(sql`date(${messages.timestamp})`)
-    .orderBy(sql`date(${messages.timestamp})`)
+    .groupBy(sql`date(${messages.timestamp}, 'localtime')`)
+    .orderBy(sql`date(${messages.timestamp}, 'localtime')`)
     .all()
 
   const topProjects = db.select({

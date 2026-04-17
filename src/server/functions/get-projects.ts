@@ -71,14 +71,14 @@ export const getProjectDetail = createServerFn({ method: 'GET' })
 
     // Daily cost trend for this project
     const dailyCost = db.select({
-      date: sql<string>`date(${messages.timestamp})`.as('date'),
+      date: sql<string>`date(${messages.timestamp}, 'localtime')`.as('date'),
       cost: sql<number>`coalesce(sum(${messages.estimatedCostUsd}), 0)`,
     })
       .from(messages)
       .innerJoin(sessions, eq(messages.sessionId, sessions.id))
       .where(eq(sessions.projectId, input.projectId))
-      .groupBy(sql`date(${messages.timestamp})`)
-      .orderBy(sql`date(${messages.timestamp})`)
+      .groupBy(sql`date(${messages.timestamp}, 'localtime')`)
+      .orderBy(sql`date(${messages.timestamp}, 'localtime')`)
       .all()
 
     return { project, sessions: projectSessions, modelBreakdown, dailyCost }

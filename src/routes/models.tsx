@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
-import { getModelStatsAll, getModelStats30d, getModelStats90d } from '~/server/functions/get-model-stats'
-import { formatTokens, formatCost } from '~/lib/format'
-import { getModelDisplayName } from '~/lib/pricing'
-import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from 'recharts'
+
+import { useModelStats } from '~/hooks/useModelStats'
+import { formatTokens, formatCost, rechartsFmt} from '~/lib/format'
+import { getModelDisplayName } from '~/lib/pricing'
+import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
+import { Card } from '~/components/ui/card'
+import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
 
 const chartColors: Record<string, string> = {
   'claude-opus-4-6': '#c96442',
@@ -18,10 +20,12 @@ const chartColors: Record<string, string> = {
 }
 const defaultColor = '#b0aea5'
 
-const periodFns = {
-  all: getModelStatsAll,
-  '90d': getModelStats90d,
-  '30d': getModelStats30d,
+const tooltipStyle = {
+  backgroundColor: 'var(--color-card)',
+  border: '1px solid var(--color-border)',
+  borderRadius: 8,
+  fontSize: 13,
+  color: 'var(--color-foreground)',
 }
 
 export const Route = createFileRoute('/models')({
@@ -30,12 +34,7 @@ export const Route = createFileRoute('/models')({
 
 function ModelsPage() {
   const [period, setPeriod] = useState<Period>('30d')
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['modelStats', period],
-    queryFn: () => periodFns[period](),
-    refetchInterval: 60_000,
-  })
+  const { data, isLoading } = useModelStats(period)
 
   if (isLoading || !data) {
     return (
@@ -44,18 +43,13 @@ function ModelsPage() {
           <h2 className="text-3xl">Models</h2>
           <PeriodFilter value={period} onChange={setPeriod} />
         </div>
-        <div className="grid grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-48 animate-pulse rounded-lg" style={{ backgroundColor: 'var(--color-secondary)' }} />
-          ))}
-        </div>
+        <LoadingSkeleton cols={3} height={180} />
       </div>
     )
   }
 
   const { modelStats, dailyByModel } = data
 
-  // Pivot daily data for multi-line chart
   const dates = [...new Set(dailyByModel.map((d) => d.date))].sort()
   const models = [...new Set(dailyByModel.map((d) => d.model))]
   const pivotedDaily = dates.map((date) => {
@@ -79,18 +73,9 @@ function ModelsPage() {
         <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
-      {/* Model cards */}
       <div className="grid grid-cols-3 gap-4">
         {modelStats.map((m) => (
-          <div
-            key={m.model}
-            className="rounded-xl p-6"
-            style={{
-              backgroundColor: 'var(--color-card)',
-              border: '1px solid var(--color-border)',
-              boxShadow: '0px 0px 0px 1px var(--color-border)',
-            }}
-          >
+          <Card key={m.model}>
             <div className="flex items-center gap-2 mb-4">
               <div className="h-3 w-3 rounded-full" style={{ backgroundColor: chartColors[m.model] ?? defaultColor }} />
               <h3 className="text-xl">{getModelDisplayName(m.model)}</h3>
@@ -127,23 +112,28 @@ function ModelsPage() {
                 <p style={{ color: 'var(--color-muted-foreground)' }}>{m.messageCount}</p>
               </div>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
-      {/* Daily trend by model */}
-      <div className="rounded-lg p-6" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-        <h3 className="mb-4 text-lg">Daily Cost by Model</h3>
+      <Card title="Daily Cost by Model">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={pivotedDaily}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(d) => d.slice(5)} />
-            <YAxis tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(v) => `$${v.toFixed(0)}`} />
-            <Tooltip
-              contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 13 }}
-              formatter={(value: number, name: string) => [formatCost(value), getModelDisplayName(name)]}
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
+              tickFormatter={(d: string) => d.slice(5)}
             />
-            <Legend formatter={(value) => getModelDisplayName(value)} />
+            <YAxis
+              tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
+              tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+            />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              formatter={rechartsFmt((value, name) => [formatCost(value), getModelDisplayName(name ?? '')])}
+            />
+            <Legend formatter={(value: string) => getModelDisplayName(value)} />
             {models.map((model) => (
               <Line
                 key={model}
@@ -156,7 +146,7 @@ function ModelsPage() {
             ))}
           </LineChart>
         </ResponsiveContainer>
-      </div>
+      </Card>
     </div>
   )
 }

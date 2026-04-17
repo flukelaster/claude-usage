@@ -1,26 +1,29 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getOverviewAll, getOverview30d, getOverview90d } from '~/server/functions/get-overview'
-import { syncLogs, getLastSyncTime } from '~/server/functions/sync-logs'
-import { formatTokens, formatCost, formatPercent, formatRelativeTime } from '~/lib/format'
-import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell
+  ResponsiveContainer, Cell,
 } from 'recharts'
-import { ExportButton } from '~/components/export-button'
 import { RefreshCw, Coins, FolderOpen, Zap, Terminal, Code } from 'lucide-react'
+
+import { useOverview } from '~/hooks/useOverview'
+import { useLastSync, useSyncLogs } from '~/hooks/useSync'
+import { formatTokens, formatCost, formatPercent, formatRelativeTime, rechartsFmt } from '~/lib/format'
+import { PeriodFilter, getPeriodLabel, type Period } from '~/components/period-filter'
+import { ExportButton } from '~/components/export-button'
+import { DataExportButton } from '~/components/data-export-button'
+import { UnknownModelBanner } from '~/components/unknown-model-banner'
+import { BudgetProgress } from '~/components/budget-progress'
+import { SubscriptionStatus } from '~/components/subscription-status'
+import { KpiGrid } from '~/components/cards/kpi-grid'
+import { TopListCard } from '~/components/cards/top-list-card'
+import { Card } from '~/components/ui/card'
+import { LoadingSkeleton } from '~/components/ui/loading-skeleton'
+import { ErrorState } from '~/components/ui/error-state'
 
 export const Route = createFileRoute('/')({
   component: OverviewPage,
 })
-
-const periodFns: Record<Period, typeof getOverviewAll> = {
-  all: getOverviewAll,
-  '90d': getOverview90d,
-  '30d': getOverview30d,
-}
 
 const cardStyle = {
   backgroundColor: 'var(--color-card)',
@@ -36,42 +39,33 @@ const tooltipStyle = {
   color: 'var(--color-foreground)',
 }
 
+const chartColors = ['#c96442', '#d97757', '#87867f', '#5e5d59', '#b0aea5']
+
 function OverviewPage() {
-  const queryClient = useQueryClient()
   const [period, setPeriod] = useState<Period>('30d')
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['overview', period],
-    queryFn: () => periodFns[period](),
-    refetchInterval: 60_000,
-  })
-
-  const { data: lastSync } = useQuery({
-    queryKey: ['lastSync'],
-    queryFn: () => getLastSyncTime(),
-  })
-
-  const syncMutation = useMutation({
-    mutationFn: () => syncLogs(),
-    onSuccess: () => {
-      queryClient.invalidateQueries()
-    },
-  })
+  const { data, isLoading, error } = useOverview(period)
+  const { data: lastSync } = useLastSync()
+  const sync = useSyncLogs()
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg" style={{ color: 'var(--color-muted-foreground)' }}>Failed to load dashboard data</p>
-        <button
-          type="button"
-          onClick={() => syncMutation.mutate()}
-          className="mt-4 flex items-center gap-2 rounded-lg px-4 py-2 text-sm"
-          style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}
-        >
-          <RefreshCw size={16} />
-          Sync Logs
-        </button>
-      </div>
+      <ErrorState
+        message="Failed to load dashboard data"
+        action={
+          <button
+            type="button"
+            onClick={() => sync.mutate()}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm"
+            style={{
+              backgroundColor: 'var(--color-primary)',
+              color: 'var(--color-primary-foreground)',
+            }}
+          >
+            <RefreshCw size={16} />
+            Sync Logs
+          </button>
+        }
+      />
     )
   }
 
@@ -82,20 +76,12 @@ function OverviewPage() {
           <h2 className="text-3xl">Overview</h2>
           <PeriodFilter value={period} onChange={setPeriod} />
         </div>
-        <div className="grid grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="rounded-lg p-6 animate-pulse" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-              <div className="h-4 w-20 rounded" style={{ backgroundColor: 'var(--color-secondary)' }} />
-              <div className="mt-3 h-8 w-32 rounded" style={{ backgroundColor: 'var(--color-secondary)' }} />
-            </div>
-          ))}
-        </div>
+        <LoadingSkeleton cols={3} height={120} />
       </div>
     )
   }
 
   const { kpi, dailyCost, topProjects, recentSessions } = data
-  const chartColors = ['#c96442', '#d97757', '#87867f', '#5e5d59', '#b0aea5']
 
   return (
     <div className="space-y-6">
@@ -105,59 +91,56 @@ function OverviewPage() {
           <h2 className="text-3xl">Overview</h2>
           <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
             {getPeriodLabel(data.days)}
-            {lastSync && (
-              <span> &middot; Synced {formatRelativeTime(new Date(lastSync))}</span>
-            )}
+            {lastSync && <span> &middot; Synced {formatRelativeTime(new Date(lastSync))}</span>}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <PeriodFilter value={period} onChange={setPeriod} />
+          <DataExportButton period={period} />
           <ExportButton period={period} />
           <button
             type="button"
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
+            onClick={() => sync.mutate()}
+            disabled={sync.isPending}
             className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors"
             style={{
-              backgroundColor: syncMutation.isPending ? 'var(--color-secondary)' : 'var(--color-primary)',
-              color: syncMutation.isPending ? 'var(--color-secondary-foreground)' : 'var(--color-primary-foreground)',
+              backgroundColor: sync.isPending ? 'var(--color-secondary)' : 'var(--color-primary)',
+              color: sync.isPending ? 'var(--color-secondary-foreground)' : 'var(--color-primary-foreground)',
             }}
           >
-            <RefreshCw size={16} className={syncMutation.isPending ? 'animate-spin' : ''} />
-            {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
+            <RefreshCw size={16} className={sync.isPending ? 'animate-spin' : ''} />
+            {sync.isPending ? 'Syncing...' : 'Sync Now'}
           </button>
         </div>
       </div>
 
-      {/* Sync result banner */}
-      {syncMutation.data && (
-        <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-muted-foreground)' }}>
-          Synced {syncMutation.data.filesProcessed} files, added {syncMutation.data.messagesAdded} messages
-          in {(syncMutation.data.durationMs / 1000).toFixed(1)}s
-          {syncMutation.data.errors > 0 && ` (${syncMutation.data.errors} errors)`}
-        </div>
-      )}
+      <UnknownModelBanner />
 
-      {/* KPI row — 3 cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <KpiCard
-          label="Estimated Cost"
-          value={formatCost(kpi.totalCost)}
-          icon={<Coins size={18} style={{ color: 'var(--color-primary)' }} />}
-        />
-        <KpiCard
-          label="Active Projects"
-          value={String(kpi.activeProjects)}
-          icon={<FolderOpen size={18} style={{ color: 'var(--color-muted-foreground)' }} />}
-        />
-        <KpiCard
-          label="Cache Hit Rate"
-          value={formatPercent(kpi.cacheHitRate)}
-          icon={<Zap size={18} style={{ color: 'var(--color-muted-foreground)' }} />}
-        />
-      </div>
+      <SubscriptionStatus />
 
-      {/* Token Breakdown — full width */}
+      <BudgetProgress />
+
+      <KpiGrid
+        columns={3}
+        items={[
+          {
+            label: 'Estimated Cost',
+            value: formatCost(kpi.totalCost),
+            icon: <Coins size={18} style={{ color: 'var(--color-primary)' }} />,
+          },
+          {
+            label: 'Active Projects',
+            value: String(kpi.activeProjects),
+            icon: <FolderOpen size={18} style={{ color: 'var(--color-muted-foreground)' }} />,
+          },
+          {
+            label: 'Cache Hit Rate',
+            value: formatPercent(kpi.cacheHitRate),
+            icon: <Zap size={18} style={{ color: 'var(--color-muted-foreground)' }} />,
+          },
+        ]}
+      />
+
       <TokenBreakdownCard
         total={kpi.totalTokens}
         input={kpi.totalInputTokens}
@@ -168,51 +151,45 @@ function OverviewPage() {
 
       {/* Charts row */}
       <div className="grid grid-cols-2 gap-6">
-        {/* Daily Cost Trend */}
-        <div className="rounded-lg p-6" style={cardStyle}>
-          <h3 className="mb-4 text-lg">Daily Cost Trend</h3>
+        <Card title="Daily Cost Trend">
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={dailyCost}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(d) => d.slice(5)} />
-              <YAxis tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(v) => `$${v.toFixed(0)}`} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatCost(value), 'Cost']} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} tickFormatter={(d: string) => d.slice(5)} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} tickFormatter={(v: number) => `$${v.toFixed(0)}`} />
+              <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => [formatCost(value), 'Cost'])} />
               <Area type="monotone" dataKey="cost" stroke="#c96442" fill="#c96442" fillOpacity={0.15} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
 
-        {/* Token Mix */}
-        <div className="rounded-lg p-6" style={cardStyle}>
-          <h3 className="mb-4 text-lg">Daily Token Mix</h3>
+        <Card title="Daily Token Mix">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={dailyCost}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(d) => d.slice(5)} />
-              <YAxis tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(v) => formatTokens(v)} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => formatTokens(value)} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} tickFormatter={(d: string) => d.slice(5)} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} tickFormatter={(v: number) => formatTokens(v)} />
+              <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => formatTokens(value))} />
               <Bar dataKey="inputTokens" stackId="a" fill="#c96442" name="Input" />
               <Bar dataKey="outputTokens" stackId="a" fill="#d97757" name="Output" />
               <Bar dataKey="cacheCreationTokens" stackId="a" fill="#87867f" name="Cache Write" />
               <Bar dataKey="cacheReadTokens" stackId="a" fill="#b0aea5" name="Cache Read" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       </div>
 
       {/* Bottom row */}
       <div className="grid grid-cols-2 gap-6">
-        {/* Top Projects */}
-        <div className="rounded-lg p-6" style={cardStyle}>
-          <h3 className="mb-4 text-lg">Top Projects</h3>
+        <Card title="Top Projects">
           {topProjects.length === 0 ? (
             <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={topProjects} layout="vertical">
-                <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }} tickFormatter={(v) => formatCost(v)} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }} tickFormatter={(v: number) => formatCost(v)} />
                 <YAxis type="category" dataKey="displayName" width={140} tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatCost(value), 'Cost']} />
+                <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => [formatCost(value), 'Cost'])} />
                 <Bar dataKey="totalCost" radius={[0, 4, 4, 0]}>
                   {topProjects.map((_, i) => (
                     <Cell key={i} fill={chartColors[i % chartColors.length]} />
@@ -221,51 +198,26 @@ function OverviewPage() {
               </BarChart>
             </ResponsiveContainer>
           )}
-        </div>
+        </Card>
 
-        {/* Recent Sessions */}
-        <div className="rounded-lg p-6" style={cardStyle}>
-          <h3 className="mb-4 text-lg">Recent Sessions</h3>
-          {recentSessions.length === 0 ? (
-            <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>No sessions yet</p>
-          ) : (
-            <div className="space-y-1">
-              {recentSessions.map((s) => (
-                <a
-                  key={s.id}
-                  href={`/sessions/${s.id}`}
-                  className="flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors"
-                  style={{ '--hover-bg': 'var(--color-secondary)' } as React.CSSProperties}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-secondary)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {s.entrypoint === 'cli' ? (
-                      <Terminal size={14} style={{ color: 'var(--color-muted-foreground)', flexShrink: 0 }} />
-                    ) : (
-                      <Code size={14} style={{ color: 'var(--color-muted-foreground)', flexShrink: 0 }} />
-                    )}
-                    <span className="truncate" style={{ color: 'var(--color-foreground)' }}>
-                      {s.title || s.slug || s.id.slice(0, 8)}
-                    </span>
-                    <span className="truncate text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                      {s.projectName}
-                    </span>
-                  </div>
-                  <span className="ml-2 whitespace-nowrap text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                    {formatCost(s.totalCost ?? 0)}
-                  </span>
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
+        <TopListCard
+          title="Recent Sessions"
+          emptyText="No sessions yet"
+          items={recentSessions.map((s) => ({
+            id: s.id,
+            href: `/sessions/${s.id}`,
+            icon: s.entrypoint === 'cli'
+              ? <Terminal size={14} />
+              : <Code size={14} />,
+            primary: s.title || s.slug || s.id.slice(0, 8),
+            secondary: s.projectName,
+            trailing: formatCost(s.totalCost ?? 0),
+          }))}
+        />
       </div>
     </div>
   )
 }
-
-/* ── Token Breakdown (full-width horizontal card) ── */
 
 const tokenTypes = [
   { key: 'input' as const, label: 'Input', color: '#c96442' },
@@ -282,15 +234,12 @@ function TokenBreakdownCard({ total, input, output, cacheCreation, cacheRead }: 
   return (
     <div className="rounded-lg p-6" style={cardStyle}>
       <div className="flex items-end gap-8">
-        {/* Total */}
         <div className="shrink-0">
           <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Total Tokens</p>
           <p className="mt-1 text-3xl" style={{ fontFamily: 'Georgia, serif', fontWeight: 500, color: 'var(--color-foreground)' }}>
             {formatTokens(total)}
           </p>
         </div>
-
-        {/* Breakdown items */}
         <div className="flex flex-1 items-end gap-6">
           {tokenTypes.map((t) => {
             const val = values[t.key]
@@ -320,22 +269,6 @@ function TokenBreakdownCard({ total, input, output, cacheCreation, cacheRead }: 
           })}
         </div>
       </div>
-    </div>
-  )
-}
-
-/* ── Simple KPI Card ── */
-
-function KpiCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
-  return (
-    <div className="rounded-lg p-6" style={cardStyle}>
-      <div className="flex items-center gap-2">
-        {icon}
-        <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</span>
-      </div>
-      <p className="mt-2 text-2xl" style={{ fontFamily: 'Georgia, serif', fontWeight: 500, color: 'var(--color-foreground)' }}>
-        {value}
-      </p>
     </div>
   )
 }

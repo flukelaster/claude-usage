@@ -67,11 +67,72 @@ function createDb() {
       updated_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS tool_uses (
+      id TEXT PRIMARY KEY,
+      message_id TEXT NOT NULL REFERENCES messages(uuid),
+      session_id TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      tool_name TEXT NOT NULL,
+      input_size INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS tags (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS entity_tags (
+      tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (tag_id, entity_type, entity_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS webhooks (
+      id TEXT PRIMARY KEY,
+      url TEXT NOT NULL,
+      label TEXT,
+      events TEXT NOT NULL,
+      enabled INTEGER DEFAULT 1,
+      secret TEXT,
+      created_at TEXT NOT NULL,
+      last_delivered_at TEXT,
+      last_error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS webhook_deliveries (
+      id TEXT PRIMARY KEY,
+      webhook_id TEXT NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+      event TEXT NOT NULL,
+      attempted_at TEXT NOT NULL,
+      status INTEGER,
+      ok INTEGER DEFAULT 0,
+      duration_ms INTEGER,
+      error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS webhook_state (
+      key TEXT PRIMARY KEY,
+      last_fired_at TEXT,
+      last_value TEXT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
     CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
     CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
     CREATE INDEX IF NOT EXISTS idx_messages_model ON messages(model);
+    CREATE INDEX IF NOT EXISTS idx_tool_uses_message ON tool_uses(message_id);
+    CREATE INDEX IF NOT EXISTS idx_tool_uses_session ON tool_uses(session_id);
+    CREATE INDEX IF NOT EXISTS idx_tool_uses_name ON tool_uses(tool_name);
+    CREATE INDEX IF NOT EXISTS idx_tool_uses_timestamp ON tool_uses(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_entity_tags_tag ON entity_tags(tag_id);
+    CREATE INDEX IF NOT EXISTS idx_entity_tags_entity ON entity_tags(entity_type, entity_id);
+    CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_hook ON webhook_deliveries(webhook_id);
+    CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_time ON webhook_deliveries(attempted_at);
   `)
 
   return db

@@ -1,0 +1,54 @@
+import type { Period } from '~/types'
+
+export const queryKeys = {
+  overview: (period: Period) => ['overview', period] as const,
+  dailyUsage: (period: Period) => ['daily-usage', period] as const,
+  forecast: () => ['forecast'] as const,
+  activity: (period: Period) => ['activity', period] as const,
+  efficiency: (period: Period) => ['efficiency', period] as const,
+  modelStats: (period: Period) => ['modelStats', period] as const,
+  cacheStats: (period: Period) => ['cacheStats', period] as const,
+  whatIf: (period: Period) => ['what-if', period] as const,
+  projects: () => ['projects'] as const,
+  projectDetail: (id: string) => ['project', id] as const,
+  sessions: () => ['sessions'] as const,
+  sessionDetail: (id: string) => ['session', id] as const,
+  lastSync: () => ['lastSync'] as const,
+  homeDir: () => ['homeDir'] as const,
+  settings: () => ['settings'] as const,
+  unknownModels: () => ['unknownModels'] as const,
+  budget: () => ['budget'] as const,
+  tools: (period: Period) => ['tools', period] as const,
+  anomalies: () => ['anomalies'] as const,
+  contextUtilization: (period: Period) => ['contextUtilization', period] as const,
+  comparison: (windowDays: number) => ['comparison', windowDays] as const,
+  calendar: (year: number) => ['calendar', year] as const,
+  subscription: () => ['subscription'] as const,
+}
+
+/**
+ * All query keys that should be invalidated after a sync completes.
+ */
+export const dataQueryKeys = [
+  'overview',
+  'daily-usage',
+  'forecast',
+  'activity',
+  'efficiency',
+  'modelStats',
+  'cacheStats',
+  'what-if',
+  'projects',
+  'project',
+  'sessions',
+  'session',
+  'lastSync',
+  'unknownModels',
+  'budget',
+  'tools',
+  'anomalies',
+  'contextUtilization',
+  'comparison',
+  'calendar',
+  'subscription',
+] as const
