@@ -13,6 +13,7 @@ export interface ModelPricing {
 
 // Map raw model strings to pricing family
 const MODEL_FAMILY: Record<string, string> = {
+  'claude-opus-4-7': 'opus-4.7',
   'claude-opus-4-6': 'opus-4.6',
   'claude-opus-4-5': 'opus-4.5',
   'claude-opus-4-5-20251101': 'opus-4.5',
@@ -28,6 +29,8 @@ const MODEL_FAMILY: Record<string, string> = {
 }
 
 export const PRICING: Record<string, ModelPricing> = {
+  // TODO: verify opus-4.7 pricing at platform.claude.com/docs
+  'opus-4.7':   { input:  5.00, output: 25.00, cacheWrite5m:  6.25, cacheWrite1h: 10.00, cacheRead: 0.50 },
   'opus-4.6':   { input:  5.00, output: 25.00, cacheWrite5m:  6.25, cacheWrite1h: 10.00, cacheRead: 0.50 },
   'opus-4.5':   { input:  5.00, output: 25.00, cacheWrite5m:  6.25, cacheWrite1h: 10.00, cacheRead: 0.50 },
   'opus-4.1':   { input: 15.00, output: 75.00, cacheWrite5m: 18.75, cacheWrite1h: 30.00, cacheRead: 1.50 },
@@ -55,6 +58,7 @@ export function getModelPricing(model: string): ModelPricing {
 export function getModelDisplayName(model: string): string {
   const family = getModelFamily(model)
   const names: Record<string, string> = {
+    'opus-4.7': 'Opus 4.7',
     'opus-4.6': 'Opus 4.6',
     'opus-4.5': 'Opus 4.5',
     'opus-4.1': 'Opus 4.1',
