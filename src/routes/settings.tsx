@@ -15,6 +15,7 @@ import { useSubscription, useSetSubscriptionPlan } from '~/hooks/useSubscription
 import { SUBSCRIPTION_PLANS, PLAN_IDS } from '~/lib/subscription'
 import { SidechainToggle } from '~/components/sidechain-toggle'
 import { UnknownModelBanner } from '~/components/unknown-model-banner'
+import { RemoteIngest } from '~/components/remote-ingest'
 import type { DatabaseDump } from '~/server/functions/db-backup'
 
 export const Route = createFileRoute('/settings')({
@@ -229,6 +230,8 @@ function SettingsPage() {
           })}
         </div>
       </div>
+
+      <RemoteIngest />
 
       {/* Backup & Restore */}
       <div

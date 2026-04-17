@@ -24,6 +24,8 @@ export const queryKeys = {
   comparison: (windowDays: number) => ['comparison', windowDays] as const,
   calendar: (year: number) => ['calendar', year] as const,
   subscription: () => ['subscription'] as const,
+  ingestApiKey: () => ['ingestApiKey'] as const,
+  connectedMachines: () => ['connectedMachines'] as const,
 }
 
 /**

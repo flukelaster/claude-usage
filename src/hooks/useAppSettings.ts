@@ -4,6 +4,9 @@ import {
   setIncludeSidechain,
   setMonthlyBudget,
   setBillingCycleStartDay,
+  getIngestApiKey,
+  regenerateIngestApiKey,
+  getConnectedMachines,
   type AppSettingsPayload,
 } from '~/server/functions/app-settings'
 import { queryKeys, dataQueryKeys } from './queryKeys'
@@ -52,5 +55,30 @@ export function useSetBillingCycleStartDay() {
   return useMutation({
     mutationFn: (day: number) => setBillingCycleStartDay({ data: { day } }),
     onSuccess: invalidate,
+  })
+}
+
+export function useIngestApiKey() {
+  return useQuery({
+    queryKey: queryKeys.ingestApiKey(),
+    queryFn: () => getIngestApiKey(),
+  })
+}
+
+export function useRegenerateIngestApiKey() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => regenerateIngestApiKey(),
+    onSuccess: (data) => {
+      qc.setQueryData(queryKeys.ingestApiKey(), data)
+    },
+  })
+}
+
+export function useConnectedMachines() {
+  return useQuery({
+    queryKey: queryKeys.connectedMachines(),
+    queryFn: () => getConnectedMachines(),
+    refetchInterval: 30_000,
   })
 }

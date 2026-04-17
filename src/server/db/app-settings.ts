@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { randomBytes } from 'node:crypto'
 import { getDb } from './client'
 import { syncState } from './schema'
 
@@ -19,6 +20,7 @@ export type SettingKey =
   | 'customFiveHourOutput'
   | 'customWeeklyInput'
   | 'customWeeklyOutput'
+  | 'ingestApiKey'
 
 function prefixed(key: SettingKey): string {
   return `${PREFIX}${key}`
@@ -77,4 +79,28 @@ export function writeNumberSetting(key: SettingKey, value: number): void {
  */
 export function shouldIncludeSidechain(): boolean {
   return readBooleanSetting('includeSidechain', false)
+}
+
+/**
+ * Bearer token that `/api/ingest` requires. Auto-generated on first read
+ * if none has been set, so a fresh install is usable without a setup
+ * step. Regenerating in the UI invalidates all agents until their
+ * `.env` files are updated.
+ */
+export function getOrCreateIngestApiKey(): string {
+  let key = readSettingRaw('ingestApiKey')
+  if (key && key.length >= 32) return key
+  key = generateApiKey()
+  writeSettingRaw('ingestApiKey', key)
+  return key
+}
+
+export function setIngestApiKey(key: string): void {
+  writeSettingRaw('ingestApiKey', key)
+}
+
+function generateApiKey(): string {
+  // 32 bytes of randomness, base64url-encoded — same rough strength as
+  // a typical platform PAT.
+  return randomBytes(32).toString('base64url')
 }

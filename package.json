@@ -7,6 +7,7 @@
     "build": "vite build",
     "start": "node .output/server/index.mjs",
     "sync": "tsx scripts/sync.ts",
+    "agent": "tsx scripts/agent.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",

@@ -28,6 +28,7 @@ function createDb() {
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       project_id TEXT NOT NULL REFERENCES projects(id),
+      machine_id TEXT DEFAULT 'local',
       file_path TEXT NOT NULL,
       title TEXT,
       slug TEXT,
@@ -122,6 +123,7 @@ function createDb() {
 
     CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
+    CREATE INDEX IF NOT EXISTS idx_sessions_machine ON sessions(machine_id);
     CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
     CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
     CREATE INDEX IF NOT EXISTS idx_messages_model ON messages(model);
@@ -134,6 +136,16 @@ function createDb() {
     CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_hook ON webhook_deliveries(webhook_id);
     CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_time ON webhook_deliveries(attempted_at);
   `)
+
+  // Idempotent migrations for columns added after v1. SQLite has no
+  // `ADD COLUMN IF NOT EXISTS`, so we inspect table_info and add only
+  // when missing. Cheap enough to run on every connect.
+  const sessionCols = sqlite.prepare(`PRAGMA table_info(sessions)`).all() as Array<{ name: string }>
+  const hasMachineId = sessionCols.some((c) => c.name === 'machine_id')
+  if (!hasMachineId) {
+    sqlite.exec(`ALTER TABLE sessions ADD COLUMN machine_id TEXT DEFAULT 'local'`)
+    sqlite.exec(`UPDATE sessions SET machine_id = 'local' WHERE machine_id IS NULL`)
+  }
 
   return db
 }

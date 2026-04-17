@@ -61,3 +61,40 @@ export const setBillingCycleStartDay = createServerFn({ method: 'POST' })
     writeNumberSetting('billingCycleStartDay', clamped)
     return { ok: true as const }
   })
+
+export const getIngestApiKey = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<{ apiKey: string }> => {
+    const { getOrCreateIngestApiKey } = await import('~/server/db/app-settings')
+    return { apiKey: getOrCreateIngestApiKey() }
+  },
+)
+
+export const regenerateIngestApiKey = createServerFn({ method: 'POST' }).handler(
+  async (): Promise<{ apiKey: string }> => {
+    const { setIngestApiKey, getOrCreateIngestApiKey } = await import('~/server/db/app-settings')
+    // Clear by writing empty, then re-fetch which regenerates.
+    setIngestApiKey('')
+    return { apiKey: getOrCreateIngestApiKey() }
+  },
+)
+
+export const getConnectedMachines = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<Array<{ machineId: string; sessionCount: number; lastSeenAt: string | null }>> => {
+    const { getDb } = await import('~/server/db/client')
+    const { sessions } = await import('~/server/db/schema')
+    const { sql } = await import('drizzle-orm')
+    const db = getDb()
+    const rows = db
+      .select({
+        machineId: sessions.machineId,
+        sessionCount: sql<number>`count(*)`,
+        lastSeenAt: sql<string | null>`max(${sessions.endedAt})`,
+      })
+      .from(sessions)
+      .groupBy(sessions.machineId)
+      .all()
+    return rows
+      .filter((r): r is { machineId: string; sessionCount: number; lastSeenAt: string | null } => !!r.machineId)
+      .sort((a, b) => (b.lastSeenAt ?? '').localeCompare(a.lastSeenAt ?? ''))
+  },
+)

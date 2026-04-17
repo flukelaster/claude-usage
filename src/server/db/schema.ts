@@ -11,6 +11,7 @@ export const projects = sqliteTable('projects', {
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),                     // session UUID
   projectId: text('project_id').notNull().references(() => projects.id),
+  machineId: text('machine_id').default('local'),  // origin host, 'local' = server's own files
   filePath: text('file_path').notNull(),
   title: text('title'),                            // from ai-title or custom-title
   slug: text('slug'),                              // human-readable slug
@@ -28,6 +29,7 @@ export const sessions = sqliteTable('sessions', {
 }, (table) => [
   index('idx_sessions_project').on(table.projectId),
   index('idx_sessions_started').on(table.startedAt),
+  index('idx_sessions_machine').on(table.machineId),
 ])
 
 export const messages = sqliteTable('messages', {
