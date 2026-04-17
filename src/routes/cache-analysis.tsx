@@ -115,14 +115,14 @@ function CacheAnalysisPage() {
         <Card title="Daily Cache Token Volume">
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={dailyCacheTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11, fill: '#87867f' }}
+                tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                 tickFormatter={(d: string) => d.slice(5)}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: '#87867f' }}
+                tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                 tickFormatter={(v: number) => formatTokens(v)}
               />
               <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => formatTokens(value))} />

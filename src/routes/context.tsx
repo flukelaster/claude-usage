@@ -84,12 +84,12 @@ function ContextUtilizationPage() {
           <Card title="Utilization Distribution">
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={data.buckets}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 11, fill: '#87867f' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                 />
-                <YAxis tick={{ fontSize: 11, fill: '#87867f' }} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   formatter={rechartsFmt((value) => [value.toLocaleString(), 'Messages'])}
@@ -114,15 +114,15 @@ function ContextUtilizationPage() {
           <Card title="Daily Utilization Trend">
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={data.dailyAverage}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11, fill: '#87867f' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                   tickFormatter={(d: string) => d.slice(5)}
                 />
                 <YAxis
                   domain={[0, 1]}
-                  tick={{ fontSize: 11, fill: '#87867f' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                   tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
                 />
                 <Tooltip

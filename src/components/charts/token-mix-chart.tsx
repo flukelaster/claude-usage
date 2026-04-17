@@ -35,14 +35,14 @@ export function TokenMixChart({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
         <XAxis
           dataKey="date"
-          tick={{ fontSize: 11, fill: '#87867f' }}
+          tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
           tickFormatter={(d: string) => d.slice(5)}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: '#87867f' }}
+          tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
           tickFormatter={(v: number) => formatTokens(v)}
         />
         <Tooltip

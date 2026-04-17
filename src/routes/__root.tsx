@@ -33,6 +33,7 @@ import {
 import { useTheme } from '~/lib/theme'
 import { ThemeToggle } from '~/components/theme-toggle'
 import { CommandPalette } from '~/components/command-palette'
+import { ToastProvider } from '~/components/ui/toast'
 import { useAutoSync } from '~/hooks/useAutoSync'
 import '~/styles/globals.css'
 
@@ -86,16 +87,18 @@ function RootComponent() {
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        <AutoSyncDriver />
-        <CommandPalette />
-        <div className="flex h-screen">
-          <Sidebar theme={theme} onToggleTheme={toggle} />
-          <main className="flex-1 overflow-y-auto p-8">
-            <div className="mx-auto max-w-[1200px]">
-              <Outlet />
-            </div>
-          </main>
-        </div>
+        <ToastProvider>
+          <AutoSyncDriver />
+          <CommandPalette />
+          <div className="flex h-screen">
+            <Sidebar theme={theme} onToggleTheme={toggle} />
+            <main className="flex-1 overflow-y-auto p-8">
+              <div className="mx-auto max-w-[1200px]">
+                <Outlet />
+              </div>
+            </main>
+          </div>
+        </ToastProvider>
       </QueryClientProvider>
     </RootDocument>
   )
@@ -173,6 +176,32 @@ function Sidebar({ theme, onToggleTheme }: { theme: 'light' | 'dark'; onToggleTh
           })}
         </ul>
       </nav>
+
+      {/* Command palette hint — mirrors the CommandPalette global hotkey */}
+      <div className="px-6 pb-3 pt-1">
+        <kbd
+          className="flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] w-full"
+          style={{
+            backgroundColor: 'var(--color-background)',
+            color: 'var(--color-muted-foreground)',
+            border: '1px solid var(--color-border)',
+            fontFamily: 'inherit',
+          }}
+          title="Open command palette"
+        >
+          <span>Press</span>
+          <span
+            className="rounded px-1.5 py-0.5 font-medium"
+            style={{
+              backgroundColor: 'var(--color-secondary)',
+              color: 'var(--color-foreground)',
+            }}
+          >
+            ⌘K
+          </span>
+          <span>to search</span>
+        </kbd>
+      </div>
 
       {/* Footer */}
       <div

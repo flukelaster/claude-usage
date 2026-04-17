@@ -21,7 +21,7 @@ export function BudgetProgress() {
 
   const icon =
     data.status === 'exceeded' ? (
-      <XCircle size={18} style={{ color: '#b53333' }} />
+      <XCircle size={18} style={{ color: 'var(--color-danger)' }} />
     ) : data.status === 'warning' ? (
       <AlertTriangle size={18} style={{ color: 'var(--color-primary)' }} />
     ) : (

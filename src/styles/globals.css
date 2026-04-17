@@ -28,6 +28,22 @@
   --color-destructive: #b53333;       /* Error Crimson */
   --color-destructive-foreground: #faf9f5;
 
+  /* Semantic status tokens — used for KPIs, badges, alert banners.
+     Neutral = stone grey so "down $10" reads calmly instead of as a loss. */
+  --color-success: #4d7c5f;
+  --color-success-foreground: #faf9f5;
+  --color-warning: #c96442;
+  --color-warning-foreground: #faf9f5;
+  --color-danger: #b53333;
+  --color-danger-foreground: #faf9f5;
+  --color-neutral: #87867f;
+
+  /* Chart surface tokens — consumed by chart-theme.ts so Recharts keeps
+     matching the active theme instead of hard-coding parchment hues. */
+  --color-chart-grid: #f0eee6;
+  --color-chart-tick: #87867f;
+  --color-chart-label: #5e5d59;
+
   --color-border: #f0eee6;            /* Border Cream */
   --color-input: #f0eee6;
   --color-ring: #3898ec;              /* Focus Blue — only cool color */
@@ -89,8 +105,20 @@ html.dark {
   --color-accent: #3d3d3a;
   --color-accent-foreground: #e8e6dc;
 
-  --color-destructive: #b53333;
+  --color-destructive: #c94545;
   --color-destructive-foreground: #faf9f5;
+
+  --color-success: #8aad96;              /* Lightened for dark bg */
+  --color-success-foreground: #141413;
+  --color-warning: #e09070;              /* Softer terracotta */
+  --color-warning-foreground: #141413;
+  --color-danger: #c94545;
+  --color-danger-foreground: #faf9f5;
+  --color-neutral: #b0aea5;
+
+  --color-chart-grid: #3d3d3a;
+  --color-chart-tick: #87867f;
+  --color-chart-label: #b0aea5;
 
   --color-border: #30302e;               /* Border Dark */
   --color-input: #30302e;
@@ -153,4 +181,27 @@ html.dark {
 
 html.dark .shadow-ring-hover {
   box-shadow: 0px 0px 0px 1px #5e5d59;
+}
+
+/* Toast slide-in animation — used by the <Toaster> portal so toasts
+   don't just pop into existence. Slide from the right + fade. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
 }

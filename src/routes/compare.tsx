@@ -119,20 +119,20 @@ function ComparePage() {
           <Card title={`Daily Cost — overlayed ${windowDays}-day windows`}>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={data.dailyPairs}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
                 <XAxis
                   dataKey="offset"
-                  tick={{ fontSize: 11, fill: '#87867f' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                   label={{
                     value: 'Day in window',
                     position: 'insideBottom',
                     offset: -4,
-                    fill: '#87867f',
+                    fill: 'var(--color-chart-tick)',
                     fontSize: 11,
                   }}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: '#87867f' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                   tickFormatter={(v: number) => `$${v.toFixed(0)}`}
                 />
                 <Tooltip

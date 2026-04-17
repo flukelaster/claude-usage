@@ -116,16 +116,6 @@ function OverviewPage() {
 
       <UnknownModelBanner />
 
-      {sync.data && (
-        <div className="rounded-lg p-3 text-sm" style={cardStyle}>
-          <span style={{ color: 'var(--color-muted-foreground)' }}>
-            Synced {sync.data.filesProcessed} files, added {sync.data.messagesAdded} messages
-            in {(sync.data.durationMs / 1000).toFixed(1)}s
-            {sync.data.errors > 0 && ` (${sync.data.errors} errors)`}
-          </span>
-        </div>
-      )}
-
       <SubscriptionStatus />
 
       <BudgetProgress />
@@ -164,9 +154,9 @@ function OverviewPage() {
         <Card title="Daily Cost Trend">
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={dailyCost}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(d: string) => d.slice(5)} />
-              <YAxis tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(v: number) => `$${v.toFixed(0)}`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} tickFormatter={(d: string) => d.slice(5)} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} tickFormatter={(v: number) => `$${v.toFixed(0)}`} />
               <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => [formatCost(value), 'Cost'])} />
               <Area type="monotone" dataKey="cost" stroke="#c96442" fill="#c96442" fillOpacity={0.15} strokeWidth={2} />
             </AreaChart>
@@ -176,9 +166,9 @@ function OverviewPage() {
         <Card title="Daily Token Mix">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={dailyCost}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(d: string) => d.slice(5)} />
-              <YAxis tick={{ fontSize: 11, fill: '#87867f' }} tickFormatter={(v: number) => formatTokens(v)} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} tickFormatter={(d: string) => d.slice(5)} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} tickFormatter={(v: number) => formatTokens(v)} />
               <Tooltip contentStyle={tooltipStyle} formatter={rechartsFmt((value) => formatTokens(value))} />
               <Bar dataKey="inputTokens" stackId="a" fill="#c96442" name="Input" />
               <Bar dataKey="outputTokens" stackId="a" fill="#d97757" name="Output" />

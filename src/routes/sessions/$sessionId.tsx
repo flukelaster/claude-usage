@@ -98,14 +98,14 @@ function SessionDetailPage() {
         <Card title="Cumulative Cost">
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={cumulativeData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
               <XAxis
                 dataKey="index"
-                tick={{ fontSize: 11, fill: '#87867f' }}
-                label={{ value: 'Message #', position: 'insideBottom', offset: -5, fill: '#87867f', fontSize: 11 }}
+                tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
+                label={{ value: 'Message #', position: 'insideBottom', offset: -5, fill: 'var(--color-chart-tick)', fontSize: 11 }}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: '#87867f' }}
+                tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                 tickFormatter={(v: number) => `$${v.toFixed(2)}`}
               />
               <Tooltip

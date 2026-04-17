@@ -331,7 +331,7 @@ function SettingsPage() {
               ))}
             </ul>
             {importDb.data.errors.length > 0 && (
-              <p className="mt-2" style={{ color: '#b53333' }}>
+              <p className="mt-2" style={{ color: 'var(--color-danger)' }}>
                 {importDb.data.errors.length} rows errored. First: {importDb.data.errors[0]}
               </p>
             )}
@@ -339,7 +339,7 @@ function SettingsPage() {
         )}
 
         {importDb.isError && (
-          <p className="mt-3 text-xs" style={{ color: '#b53333' }}>
+          <p className="mt-3 text-xs" style={{ color: 'var(--color-danger)' }}>
             Import failed: {importDb.error?.message}
           </p>
         )}

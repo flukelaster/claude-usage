@@ -10,6 +10,7 @@ import {
   type WebhookRow,
   type DeliveryRow,
 } from '~/server/functions/webhooks'
+import { useToast } from '~/components/ui/toast'
 
 const KEY = ['webhooks'] as const
 const DELIVERIES_KEY = (id?: string) => ['webhook-deliveries', id ?? 'all'] as const
@@ -47,6 +48,7 @@ function useInvalidate() {
 
 export function useCreateWebhook() {
   const inv = useInvalidate()
+  const toast = useToast()
   return useMutation({
     mutationFn: (data: {
       url: string
@@ -55,7 +57,17 @@ export function useCreateWebhook() {
       secret?: string | null
       enabled?: boolean
     }) => createWebhook({ data }),
-    onSuccess: inv,
+    onSuccess: () => {
+      inv()
+      toast.push({ variant: 'success', title: 'Webhook created' })
+    },
+    onError: (err) => {
+      toast.push({
+        variant: 'error',
+        title: 'Could not create webhook',
+        description: err instanceof Error ? err.message : String(err),
+      })
+    },
   })
 }
 
@@ -76,16 +88,35 @@ export function useUpdateWebhook() {
 
 export function useDeleteWebhook() {
   const inv = useInvalidate()
+  const toast = useToast()
   return useMutation({
     mutationFn: (id: string) => deleteWebhook({ data: { id } }),
-    onSuccess: inv,
+    onSuccess: () => {
+      inv()
+      toast.push({ variant: 'info', title: 'Webhook deleted' })
+    },
   })
 }
 
 export function useSendTestWebhook() {
   const inv = useInvalidate()
+  const toast = useToast()
   return useMutation({
     mutationFn: (id: string) => sendTestWebhook({ data: { id } }),
-    onSuccess: inv,
+    onSuccess: () => {
+      inv()
+      toast.push({
+        variant: 'info',
+        title: 'Test event fired',
+        description: 'Check the delivery log for the response status.',
+      })
+    },
+    onError: (err) => {
+      toast.push({
+        variant: 'error',
+        title: 'Test delivery failed',
+        description: err instanceof Error ? err.message : String(err),
+      })
+    },
   })
 }

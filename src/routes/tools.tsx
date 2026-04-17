@@ -64,13 +64,13 @@ function ToolsPage() {
           <Card title="Top Tools by Call Count">
             <ResponsiveContainer width="100%" height={320}>
               <BarChart data={data.perTool.slice(0, 12)} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
-                <XAxis type="number" tick={{ fontSize: 11, fill: '#87867f' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+                <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} />
                 <YAxis
                   dataKey="toolName"
                   type="category"
                   width={120}
-                  tick={{ fontSize: 11, fill: '#87867f' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -89,10 +89,10 @@ function ToolsPage() {
             <Card title="Attributed Cost by Tool">
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={data.perTool.slice(0, 10)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
-                  <XAxis dataKey="toolName" tick={{ fontSize: 10, fill: '#87867f' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+                  <XAxis dataKey="toolName" tick={{ fontSize: 10, fill: 'var(--color-chart-tick)' }} />
                   <YAxis
-                    tick={{ fontSize: 11, fill: '#87867f' }}
+                    tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                     tickFormatter={(v) => formatCost(v)}
                   />
                   <Tooltip
@@ -113,13 +113,13 @@ function ToolsPage() {
             <Card title="Daily Calls">
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={data.daily}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0eee6" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 11, fill: '#87867f' }}
+                    tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }}
                     tickFormatter={(d) => d.slice(5)}
                   />
-                  <YAxis tick={{ fontSize: 11, fill: '#87867f' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--color-chart-tick)' }} />
                   <Tooltip
                     contentStyle={tooltipStyle}
                     formatter={rechartsFmt((v) => [v.toLocaleString(), 'Calls'])}

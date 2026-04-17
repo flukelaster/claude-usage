@@ -159,7 +159,7 @@ function WebhooksPage() {
             {create.isPending ? 'Saving…' : 'Add webhook'}
           </button>
           {create.isError && (
-            <p className="text-xs" style={{ color: '#b53333' }}>
+            <p className="text-xs" style={{ color: 'var(--color-danger)' }}>
               {create.error?.message}
             </p>
           )}
@@ -217,7 +217,7 @@ function WebhooksPage() {
                     {h.lastError && (
                       <p
                         className="mt-2 text-xs flex items-center gap-1"
-                        style={{ color: '#b53333' }}
+                        style={{ color: 'var(--color-danger)' }}
                       >
                         <XCircle size={12} />
                         Last error: {h.lastError}
@@ -264,7 +264,7 @@ function WebhooksPage() {
                       }}
                       className="text-xs inline-flex items-center gap-1 rounded-md px-2 py-1"
                       style={{
-                        color: '#b53333',
+                        color: 'var(--color-danger)',
                         border: '1px solid var(--color-border)',
                       }}
                     >
@@ -290,9 +290,9 @@ function WebhooksPage() {
                 header: '',
                 cell: (d) =>
                   d.ok ? (
-                    <CheckCircle2 size={14} style={{ color: '#5e5d59' }} />
+                    <CheckCircle2 size={14} style={{ color: 'var(--color-neutral)' }} />
                   ) : (
-                    <XCircle size={14} style={{ color: '#b53333' }} />
+                    <XCircle size={14} style={{ color: 'var(--color-danger)' }} />
                   ),
               },
               {
